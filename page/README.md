@@ -17,7 +17,7 @@ func main() {
         ViewPage:    5,     // Кол-во показываемых страниц к пагинации
         CurrentPage: 1,     // Номер текущей страницы
         CurrentURI:  "/test/?one=1&two=2", // Текущий URI страницы
-    }).Path("page") // page это прифекс сигмента с номером страницы /test/page5/?one=1&two=2
+    }).Path("page") // page это префикс сигмента с номером страницы /test/page5/?one=1&two=2
     
     fmt.Printf("%v\n", p)
     
