@@ -1,134 +1,160 @@
 package router
 
 import (
-    "errors"
-    "log"
-    "net/http"
-    "path"
-    "regexp"
+	"errors"
+	"net/http"
+	"regexp"
 )
 
 const (
-    GET    = "GET"
-    POST   = "POST"
-    PUT    = "PUT"
-    DELETE = "DELETE"
+	GET    = "GET"
+	POST   = "POST"
+	PUT    = "PUT"
+	DELETE = "DELETE"
 )
 
 var (
-    ErrRouteNotFound = errors.New("Route not found")
+	ErrRouteNotFound = errors.New("Route not found")
 )
 
 var regexpPlaceholder = regexp.MustCompile(`:([\w]+)`)
 
 type Handler func(*Ctx) (int, error)
 
+func (self Handler) apply(ctx *Ctx, fns []appliable, index int) {
+	status, err := self(ctx)
+
+	if err != nil {
+		ctx.Res.Status = http.StatusInternalServerError
+	} else {
+		ctx.Res.Status = status
+	}
+
+	index++
+	if len(fns) > index {
+		fns[index].apply(ctx, fns, index)
+	}
+}
+
 type Route struct {
-    Method  string
-    Pattern string
-    Handler Handler
-    RegExp  *regexp.Regexp
+	*interceptor
+	Method  string
+	Pattern string
+	Handler Handler
+	FnChain func(ctx *Ctx)
+	RegExp  *regexp.Regexp
 }
 
 func NewRoute(method string, pattern string, handler Handler) *Route {
-    pattern = regexp.QuoteMeta(pattern)
-    pattern = regexpPlaceholder.ReplaceAllString(pattern, `(?P<$1>[0-9A-Za-z\-]+)`)
-    rexp := regexp.MustCompile(pattern)
-    return &Route{
-        method, pattern, handler, rexp,
-    }
+	pattern = regexp.QuoteMeta(pattern)
+	pattern = regexpPlaceholder.ReplaceAllString(pattern, `(?P<$1>[0-9A-Za-z\-]+)`)
+	rexp := regexp.MustCompile(pattern)
+	return &Route{
+		interceptor: NewInterceptor(),
+		Method:      method,
+		Pattern:     pattern,
+		Handler:     handler,
+		RegExp:      rexp,
+	}
+}
+
+type Routes map[string][]*Route
+
+func NewRoutes() Routes {
+	return Routes{
+		GET:    []*Route{},
+		POST:   []*Route{},
+		PUT:    []*Route{},
+		DELETE: []*Route{},
+	}
 }
 
 type Router struct {
-    routes map[string][]*Route
+	*interceptor
+	*group
+	mux    *Multiplexer
+	groups []*group
 }
 
 func New() *Router {
-    return &Router{
-        routes: map[string][]*Route{
-            GET:    []*Route{},
-            POST:   []*Route{},
-            PUT:    []*Route{},
-            DELETE: []*Route{},
-        },
-    }
+	return &Router{
+		interceptor: NewInterceptor(),
+		group:       NewGroup(""),
+		mux:         NewMultiplexer(),
+	}
 }
 
-func (self *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-    ctx := NewCtx(w, r)
-
-    defer ctx.Res.flush()
-
-    route, err := self.routing(ctx.Req)
-
-    if err != nil {
-        urlpath := ctx.Req.URL.Path
-        if urlpath[len(urlpath)-1] != '/' {
-            ext := path.Ext(urlpath)
-            if len(ext) == 0 {
-                ctx.Req.URL.Path += "/"
-                _, err := self.routing(ctx.Req)
-                if err == nil {
-                    ctx.Res.Status = http.StatusFound
-                    ctx.Res.Redirect(ctx.Req.URL.String())
-                    return
-                }
-            }
-        }
-        ctx.Res.Status = http.StatusNotFound
-        return
-    }
-
-    status, err := route.Handler(ctx)
-    if err != nil {
-        ctx.Res.Status = http.StatusInternalServerError
-    } else {
-        ctx.Res.Status = status
-    }
+func (self *Router) Group(prefix string) *group {
+	g := NewGroup(prefix)
+	self.groups = append(self.groups, g)
+	return g
 }
 
-func (self *Router) Get(pattern string, fn Handler) {
-    self.registr(NewRoute(GET, pattern, fn))
+func (self *Router) Complete() *Multiplexer {
+	for method, routes := range self.routes {
+		for _, route := range routes {
+
+			route.FnChain = compose(merge(
+				self.middlewares,
+				route.middlewares,
+				[]appliable{route.Handler},
+			))
+
+			self.mux.routes[method] = append(self.mux.routes[method], route)
+		}
+	}
+
+	for _, group := range self.groups {
+		for method, routes := range group.routes {
+			for _, route := range routes {
+
+				route.FnChain = compose(merge(
+					self.middlewares,
+					group.middlewares,
+					route.middlewares,
+					[]appliable{route.Handler},
+				))
+
+				self.mux.routes[method] = append(self.mux.routes[method], route)
+			}
+		}
+	}
+
+	return self.mux
 }
 
-func (self *Router) Post(pattern string, fn Handler) {
-    self.registr(NewRoute(POST, pattern, fn))
+type group struct {
+	*interceptor
+	routes Routes
+	prefix string
 }
 
-func (self *Router) Put(pattern string, fn Handler) {
-    self.registr(NewRoute(PUT, pattern, fn))
+func NewGroup(prefix string) *group {
+	return &group{
+		interceptor: NewInterceptor(),
+		routes:      NewRoutes(),
+		prefix:      prefix,
+	}
 }
 
-func (self *Router) Delete(pattern string, fn Handler) {
-    self.registr(NewRoute(DELETE, pattern, fn))
+func (self *group) Get(pattern string, fn Handler) *Route {
+	return self.registr(GET, pattern, fn)
 }
 
-func (self *Router) registr(r *Route) {
-    self.routes[r.Method] = append(self.routes[r.Method], r)
+func (self *group) Post(pattern string, fn Handler) *Route {
+	return self.registr(POST, pattern, fn)
 }
 
-func (self *Router) routing(req *Request) (*Route, error) {
-    for _, route := range self.routes[req.Method] {
-        if self.checkRoute(req, route) {
-            return route, nil
-        }
-    }
-    return nil, ErrRouteNotFound
+func (self *group) Put(pattern string, fn Handler) *Route {
+	return self.registr(PUT, pattern, fn)
 }
 
-func (self *Router) checkRoute(req *Request, r *Route) bool {
-    path := req.URL.Path
-    matches := r.RegExp.FindStringSubmatch(path)
-    if len(matches) > 0 && matches[0] == path {
-        params := make(URLParams)
-        for i, name := range r.RegExp.SubexpNames() {
-            if len(name) > 0 {
-                params[name] = matches[i]
-            }
-        }
-        req.Params = params
-        return true
-    }
-    return false
+func (self *group) Delete(pattern string, fn Handler) *Route {
+	return self.registr(DELETE, pattern, fn)
 }
 
+func (self *group) registr(method string, pattern string, fn Handler) *Route {
+	r := NewRoute(method, self.prefix+pattern, fn)
+	self.routes[method] = append(self.routes[method], r)
+	return r
+}

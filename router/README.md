@@ -12,7 +12,7 @@ import (
     "net/http"
 )
 
-func main() {
+func main() {  
     r := router.New()
 
     r.Get("/", func(ctx *router.Ctx) (int, error) {
@@ -36,8 +36,30 @@ func main() {
         ctx.Res.Redirect("/test/name")
         return 301, nil
     })
+    
+    r.Use(func(ctx *router.Ctx, next router.Next) {
+		log.Println("Global Middleware")
+		next()
+	})
 
-    if err := http.ListenAndServe(":8080", r); err != nil {
+	g := route.Group("/group")
+	g.Use(func(ctx *router.Ctx, next router.Next) {
+		log.Println("Group Middleware")
+		next()
+	})
+	{
+		g.Get("/path", func(ctx *router.Ctx) (int, error) {
+			ctx.Res.Text("Address: /group/path")
+			return 200, nil
+		}).Use(func(ctx *router.Ctx, next router.Next) {
+			log.Println("Route Middleware")
+			next()
+		})
+	}
+    
+    mux := r.Complete()
+
+    if err := http.ListenAndServe(":8080", mux); err != nil {
         log.Fatalln("ListenAndServe:", err)
     }
 }
