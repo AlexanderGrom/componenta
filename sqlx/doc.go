@@ -3,15 +3,15 @@ package sqlx
 // Builder interface:
 //
 // Select(p ...interface{}) *Builder
-// SelectRaw(exp ...string) *Builder
+// SelectRaw(exp string, bindings ...interface{}) *Builder
 // Update(sqlx.Data) *Builder
 // Insert(...sqlx.Data) *Builder
 // Delete() *Builder
-// From(name string) *Builder
+// From(table interface{}) *Builder
 // Join(table, column1, operator, column2 string) *Builder
 // LeftJoin(table, column1, operator, column2 string) *Builder
 // Where(column string, operator string, value interface{}) *Builder
-// WhereRaw(exp string) *Builder
+// WhereRaw(exp string, bindings ...interface{}) *Builder
 // WhereGroup(callback func(*sqlx.Builder)) *Builder
 // WhereIn(column string, values interface{}) *Builder
 // WhereNotIn(column string, values interface{}) *Builder
@@ -20,7 +20,7 @@ package sqlx
 // WhereNull(column string) *Builder
 // WhereNotNull(column string) *Builder
 // OrWhere(column string, operator string, value interface{}) *Builder
-// OrWhereRaw(exp string) *Builder
+// OrWhereRaw(exp string, bindings ...interface{}) *Builder
 // OrWhereGroup(callback func(*sqlx.Builder)) *Builder
 // OrWhereIn(column string, values interface{}) *Builder
 // OrWhereNotIn(column string, values interface{}) *Builder
@@ -29,8 +29,9 @@ package sqlx
 // OrWhereNull(column string) *Builder
 // OrWhereNotNull(column string) *Builder
 // GroupBy(p ...interface{}) *Builder
+// GroupByRaw(exp string, bindings ...interface{}) *Builder
 // Having(column string, operator string, value interface{}) *Builder
-// HavingRaw(exp string) *Builder
+// HavingRaw(exp string, bindings ...interface{}) *Builder
 // HavingGroup(callback func(*sqlx.Builder)) *Builder
 // OrHaving(column string, operator string, value interface{}) *Builder
 // OrHavingRaw(exp string) *Builder
@@ -59,6 +60,18 @@ package sqlx
 //
 // SELECT `id` FROM `users`;
 // query := sqlx.Table("users").Select("id")
+//
+// SELECT `id` FROM (SELECT `group_id`, MAX(`created_at`) as `lastdate` FROM `users` GROUP BY `group_id`) as `users` ORDER BY `lastdate` DESC;
+// query := Table(func(builder *Builder) {
+//     builder.Select("group_id").From("users").GroupBy("group_id").Max("created_at", "lastdate")
+// }).OrderBy("lastdate", "DESC").Sql()
+//
+// SELECT * FROM (SELECT * FROM `users` WHERE `id` = ?) as users
+// subque := Table("users").Where("id", "=", 1)
+// query := Table(Raw("( "+subque.Sql()+" ) as users", subque.Data()...))
+//
+// SELECT * FROM (SELECT * FROM users WHERE id IN (?, ?, ?)) as users WHERE `age` > ?
+// query := Table(Raw("(SELECT * FROM users WHERE id IN (?, ?, ?)) as users", 1, 2, 3)).Where("age", ">", 21)
 //
 // SELECT CONCAT('#', id) FROM `users`;
 // query := sqlx.Table("users").Select(sqlx.Raw("CONCAT('#', id)"))

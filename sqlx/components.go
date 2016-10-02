@@ -7,7 +7,7 @@ type components struct {
 	Insert    []interface{}
 	Update    []interface{}
 	Delete    []interface{}
-	From      []interface{}
+	From      []fromComponent
 	Join      []joinComponent
 	Into      []interface{}
 	Columns   []interface{}
@@ -29,6 +29,12 @@ type aggregateComponent struct {
 	function string
 	column   interface{}
 	alias    string
+}
+
+type fromComponent struct {
+	kind    string
+	table   interface{}
+	builder *Builder
 }
 
 type joinComponent struct {

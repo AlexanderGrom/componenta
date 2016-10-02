@@ -9,11 +9,38 @@ func TestSqlDriver(t *testing.T) {
 	Driver("pgsql")
 }
 
-func TestSqlTable(t *testing.T) {
+func TestSqlTable1(t *testing.T) {
 	expect := `SELECT * FROM "users"`
 	result := Table("users").Sql()
 	if result != expect {
-		t.Errorf("Expect result to equal in func TestSqlTable.\nResult: %s\nExpect: %s", result, expect)
+		t.Errorf("Expect result to equal in func TestSqlTable1.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestSqlTable2(t *testing.T) {
+	expect := `SELECT * FROM ( SELECT "group_id", MAX("created_at") as "lastdate" FROM "users" GROUP BY "group_id" ) as "users" ORDER BY "lastdate" DESC`
+	result := Table(func(builder *Builder) {
+		builder.Select("group_id").From("users").GroupBy("group_id").Max("created_at", "lastdate")
+	}).OrderBy("lastdate", "DESC").Sql()
+	if result != expect {
+		t.Errorf("Expect result to equal in func TestSqlTable2.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestSqlTable3(t *testing.T) {
+	expect := `SELECT * FROM ( SELECT * FROM "users" WHERE "id" = $1 ) as users`
+	subque := Table("users").Where("id", "=", 1)
+	result := Table(Raw("( "+subque.Sql()+" ) as users", subque.Data()...)).Sql()
+	if result != expect {
+		t.Errorf("Expect result to equal in func TestSqlTable3.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestSqlTable4(t *testing.T) {
+	expect := `SELECT * FROM (SELECT * FROM users WHERE id IN ($1, $2, $3)) as users WHERE "age" > $4`
+	result := Table(Raw("(SELECT * FROM users WHERE id IN (?, ?, ?)) as users", 1, 2, 3)).Where("age", ">", 21).Sql()
+	if result != expect {
+		t.Errorf("Expect result to equal in func TestSqlTable4.\nResult: %s\nExpect: %s", result, expect)
 	}
 }
 
@@ -65,6 +92,22 @@ func TestSqlSelectRaw2(t *testing.T) {
 	}
 }
 
+func TestSqlSelectRaw3(t *testing.T) {
+	expect := `SELECT "name", (SELECT age FROM ag WHERE id = $1 LIMIT 1) as age FROM "users"`
+	result := Table("users").Select("name", Raw("(SELECT age FROM ag WHERE id = ? LIMIT 1) as age", 1)).Sql()
+	if result != expect {
+		t.Errorf("Expect result to equal in func TestSqlSelectRaw3.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestSqlSelectRaw4(t *testing.T) {
+	expect := `SELECT name, (SELECT age FROM ag WHERE id = $1 LIMIT 1) as age FROM "users"`
+	result := Table("users").SelectRaw("name, (SELECT age FROM ag WHERE id = ? LIMIT 1) as age", 1).Sql()
+	if result != expect {
+		t.Errorf("Expect result to equal in func TestSqlSelectRaw4.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
 func TestSqlWhereBase1(t *testing.T) {
 	expect := `SELECT * FROM "users" WHERE "id" = $1`
 	result := Table("users").Where("id", "=", 1).Select("*").Sql()
@@ -99,11 +142,27 @@ func TestSqlWhereGroup(t *testing.T) {
 	}
 }
 
-func TestSqlWhereRaw(t *testing.T) {
+func TestSqlWhereRaw1(t *testing.T) {
 	expect := `SELECT * FROM "users" WHERE id = 1 OR "age" = 2`
 	result := Table("users").WhereRaw("id = 1").OrWhere("age", "=", Raw("2")).Select("*").Sql()
 	if result != expect {
-		t.Errorf("Expect result to equal in func TestSqlWhereRaw.\nResult: %s\nExpect: %s", result, expect)
+		t.Errorf("Expect result to equal in func TestSqlWhereRaw1.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestSqlWhereRaw2(t *testing.T) {
+	expect := `SELECT * FROM "users" WHERE "age" = $1 OR age = $2`
+	result := Table("users").Where("age", "=", 1).OrWhereRaw("age = ?", 2).Select("*").Sql()
+	if result != expect {
+		t.Errorf("Expect result to equal in func TestSqlWhereRaw2.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestSqlWhereRaw3(t *testing.T) {
+	expect := `SELECT * FROM "users" WHERE "age" = $1 OR "age" = (SELECT age FROM ag WHERE id = $2 OR id = $3 LIMIT 1)`
+	result := Table("users").Where("age", "=", 1).OrWhere("age", "=", Raw("(SELECT age FROM ag WHERE id = ? OR id = ? LIMIT 1)", 2, 3)).Select("*").Sql()
+	if result != expect {
+		t.Errorf("Expect result to equal in func TestSqlWhereRaw3.\nResult: %s\nExpect: %s", result, expect)
 	}
 }
 
@@ -134,13 +193,24 @@ func TestSqlWhereInList(t *testing.T) {
 	}
 }
 
-func TestSqlWhereInSub(t *testing.T) {
+func TestSqlWhereInSub1(t *testing.T) {
 	expect := `SELECT * FROM "users" WHERE "id" IN ( SELECT "user_id" FROM "orders" WHERE "city" = $1 )`
 	result := Table("users").WhereIn("id", func(builder *Builder) {
 		builder.Select("user_id").From("orders").Where("city", "=", "Moscow")
 	}).Select("*").Sql()
 	if result != expect {
-		t.Errorf("Expect result to equal in func TestSqlWhereInSub.\nResult: %s\nExpect: %s", result, expect)
+		t.Errorf("Expect result to equal in func TestSqlWhereInSub1.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestSqlWhereInSub2(t *testing.T) {
+	expect := `SELECT * FROM "users" WHERE "deleted" = $1 AND "id" IN ( SELECT "user_id" FROM "orders" WHERE "city" = $2 )`
+	result := Table("users").Where("deleted", "=", "1").
+		WhereIn("id", func(builder *Builder) {
+			builder.Select("user_id").From("orders").Where("city", "=", "Moscow")
+		}).Select("*").Sql()
+	if result != expect {
+		t.Errorf("Expect result to equal in func TestSqlWhereInSub2.\nResult: %s\nExpect: %s", result, expect)
 	}
 }
 

@@ -3,6 +3,7 @@ package sqlx
 import (
 	"fmt"
 	"strconv"
+	"unicode"
 )
 
 // Интерерфейс Stringer
@@ -15,6 +16,8 @@ func toString(x interface{}) string {
 	switch x := x.(type) {
 	case string:
 		return x
+	case Stringer:
+		return x.String()
 	case int:
 		return strconv.FormatInt(int64(x), 10)
 	case int8:
@@ -39,8 +42,6 @@ func toString(x interface{}) string {
 		return strconv.FormatFloat(float64(x), 'f', 6, 32)
 	case float64:
 		return strconv.FormatFloat(x, 'f', 6, 64)
-	case Stringer:
-		return x.String()
 	case []byte:
 		return string(x)
 	case []rune:
@@ -104,4 +105,20 @@ func isOperator(o string) bool {
 		return true
 	}
 	return false
+}
+
+// Трансформация строки из CamelCase в Snake формат
+func toSnake(str string) string {
+	runes := []rune(str)
+	length := len(runes)
+
+	var out []rune
+	for i := 0; i < length; i++ {
+		if i > 0 && unicode.IsUpper(runes[i]) && ((i+1 < length && unicode.IsLower(runes[i+1])) || unicode.IsLower(runes[i-1])) {
+			out = append(out, '_')
+		}
+		out = append(out, unicode.ToLower(runes[i]))
+	}
+
+	return string(out)
 }

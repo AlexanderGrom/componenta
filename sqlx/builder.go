@@ -7,10 +7,7 @@ import (
 type glammarFunc func() glammar
 
 var driver glammarFunc
-var drivers = map[string]glammarFunc{
-	"mysql": newMysqlGlammar,
-	"pgsql": newPgsqlGlammar,
-}
+var drivers = map[string]glammarFunc{}
 
 type List []interface{}
 type Data map[string]interface{}
@@ -34,7 +31,7 @@ func (self Data) Values() []interface{} {
 }
 
 // Драйвер грамматики, который будет использован для построения запроса
-// Параметр name может принимать значения: mysql, pgsql
+// Параметр name может принимать значения: mysql, pgsql, sqlite
 func Driver(name string) {
 	glammar, ok := drivers[name]
 	if !ok {
@@ -43,17 +40,16 @@ func Driver(name string) {
 	driver = glammar
 }
 
-// Helper для создания строителя
-func Table(table string) *Builder {
-	return NewBuilder().From(table)
+func registerDriver(name string, constructor glammarFunc) {
+	drivers[name] = constructor
 }
 
 // Kарта значений для плейсехолдеров
-var bindings = []string{"values", "set", "where", "having", "limit", "offset"}
+var bindings = []string{"values", "set", "select", "from", "where", "having", "limit", "offset"}
 
 // Карта значений для плейсехолдеров в зависимости от типа запроса
 var bindingsMap = map[string][]string{
-	"select": []string{"where", "having", "limit", "offset"},
+	"select": []string{"select", "from", "where", "group", "having", "limit", "offset"},
 	"insert": []string{"values"},
 	"update": []string{"set", "where"},
 	"delete": []string{"where"},
@@ -82,27 +78,67 @@ func NewBuilder() *Builder {
 	}
 }
 
+// Helper для создания строителя
+func Table(table interface{}) *Builder {
+	return NewBuilder().From(table)
+}
+
 func (self *Builder) Select(p ...interface{}) *Builder {
 	if self.kind != "" && self.kind != "select" {
 		return self
 	}
 	self.kind = "select"
 	self.components.Select = append(self.components.Select, p...)
-	return self
-}
-
-func (self *Builder) SelectRaw(exp ...string) *Builder {
-	buff := make([]interface{}, len(exp))
-	for k, v := range exp {
-		buff[k] = Raw(v)
+	for _, v := range p {
+		if exp, ok := v.(Expression); ok {
+			self.bind("select", exp.Data()...)
+		}
 	}
-	return self.Select(buff...)
+	return self
 }
 
-func (self *Builder) From(name string) *Builder {
-	self.table = name
-	self.components.From = []interface{}{name}
+func (self *Builder) SelectRaw(exp string, bindings ...interface{}) *Builder {
+	return self.Select(Raw(exp, bindings...))
+}
+
+func (self *Builder) From(table interface{}) *Builder {
+	switch v := table.(type) {
+	case string:
+		self.fromStr(v)
+	case func(*Builder):
+		self.fromSub(v)
+	case Expression:
+		self.fromExp(v)
+	default:
+		self.fromStr(toString(v))
+	}
 	return self
+}
+
+func (self *Builder) fromStr(table string) {
+	self.table = table
+	self.components.From = append(self.components.From, fromComponent{
+		kind:  "str",
+		table: table,
+	})
+}
+
+func (self *Builder) fromSub(callback func(*Builder)) {
+	builder := NewBuilder()
+	callback(builder)
+	self.components.From = append(self.components.From, fromComponent{
+		kind:    "sub",
+		builder: builder,
+	})
+	self.bind("from", builder.Data()...)
+}
+
+func (self *Builder) fromExp(exp Expression) {
+	self.components.From = append(self.components.From, fromComponent{
+		kind:  "exp",
+		table: exp,
+	})
+	self.bind("from", exp)
 }
 
 func (self *Builder) Join(table, column1, operator, column2 string) *Builder {
@@ -162,7 +198,7 @@ func (self *Builder) OrWhereGroup(callback func(*Builder)) *Builder {
 	return self
 }
 
-func (self *Builder) whereGroup(callback func(*Builder), boolean interface{}) {
+func (self *Builder) whereGroup(callback func(*Builder), boolean string) {
 	if len(self.components.Where) == 0 {
 		boolean = ""
 	}
@@ -178,25 +214,26 @@ func (self *Builder) whereGroup(callback func(*Builder), boolean interface{}) {
 	}
 }
 
-func (self *Builder) WhereRaw(exp string) *Builder {
-	self.whereRaw(exp, "AND")
+func (self *Builder) WhereRaw(exp string, bindings ...interface{}) *Builder {
+	self.whereRaw(exp, bindings, "AND")
 	return self
 }
 
-func (self *Builder) OrWhereRaw(exp string) *Builder {
-	self.whereRaw(exp, "OR")
+func (self *Builder) OrWhereRaw(exp string, bindings ...interface{}) *Builder {
+	self.whereRaw(exp, bindings, "OR")
 	return self
 }
 
-func (self *Builder) whereRaw(exp string, boolean interface{}) {
+func (self *Builder) whereRaw(exp string, bindings []interface{}, boolean string) {
 	if len(self.components.Where) == 0 {
 		boolean = ""
 	}
 	self.components.Where = append(self.components.Where, whereComponent{
 		kind:    "raw",
-		value:   exp,
+		value:   Raw(exp, bindings...),
 		boolean: boolean,
 	})
+	self.bind("where", bindings...)
 }
 
 func (self *Builder) WhereBetween(column string, min, max interface{}) *Builder {
@@ -338,7 +375,16 @@ func (self *Builder) whereInSub(column string, callback func(*Builder), boolean 
 
 func (self *Builder) GroupBy(p ...interface{}) *Builder {
 	self.components.Group = append(self.components.Group, p...)
+	for _, v := range p {
+		if exp, ok := v.(Expression); ok {
+			self.bind("group", exp.Data()...)
+		}
+	}
 	return self
+}
+
+func (self *Builder) GroupByRaw(exp string, bindings ...interface{}) *Builder {
+	return self.GroupBy(Raw(exp, bindings...))
 }
 
 func (self *Builder) Having(column string, operator string, value interface{}) *Builder {
@@ -394,25 +440,26 @@ func (self *Builder) havingGroup(callback func(*Builder), boolean string) {
 	}
 }
 
-func (self *Builder) HavingRaw(exp string) *Builder {
-	self.havingRaw(exp, "AND")
+func (self *Builder) HavingRaw(exp string, bindings ...interface{}) *Builder {
+	self.havingRaw(exp, bindings, "AND")
 	return self
 }
 
-func (self *Builder) OrHavingRaw(exp string) *Builder {
-	self.havingRaw(exp, "OR")
+func (self *Builder) OrHavingRaw(exp string, bindings ...interface{}) *Builder {
+	self.havingRaw(exp, bindings, "OR")
 	return self
 }
 
-func (self *Builder) havingRaw(exp string, boolean string) {
+func (self *Builder) havingRaw(exp string, bindings []interface{}, boolean string) {
 	if len(self.components.Having) == 0 {
 		boolean = ""
 	}
 	self.components.Having = append(self.components.Having, havingComponent{
 		kind:    "raw",
-		value:   exp,
+		value:   Raw(exp, bindings...),
 		boolean: boolean,
 	})
+	self.bind("where", bindings...)
 }
 
 func (self *Builder) OrderBy(column string, direction string) *Builder {
@@ -552,9 +599,15 @@ func (self *Builder) Data() []interface{} {
 	return bindings
 }
 
+func (self *Builder) Scan() {
+
+}
+
 func (self *Builder) bind(k string, b ...interface{}) {
 	for _, v := range b {
-		if _, ok := v.(Expression); !ok {
+		if exp, ok := v.(Expression); ok {
+			self.bindings[k] = append(self.bindings[k], exp.Data()...)
+		} else {
 			self.bindings[k] = append(self.bindings[k], v)
 		}
 	}

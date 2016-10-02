@@ -7,6 +7,7 @@ import (
 type glammar interface {
 	wrapQuote(string) string
 	parameter(...interface{}) string
+	prepareRaw(interface{}) string
 }
 
 // Базовая граматика
@@ -86,7 +87,33 @@ func (self *baseGlammar) compileFrom(b *Builder) string {
 	if len(b.components.From) == 0 {
 		return ""
 	}
-	return "FROM " + self.wrap(b.components.From...)
+
+	buff := make([]string, len(b.components.From))
+
+	for k, v := range b.components.From {
+		switch v.kind {
+		case "str":
+			buff[k] = self.formStr(v)
+		case "sub":
+			buff[k] = self.formSub(v)
+		case "exp":
+			buff[k] = self.formExp(v)
+		}
+	}
+
+	return "FROM " + strings.Join(buff, ", ")
+}
+
+func (self *baseGlammar) formStr(f fromComponent) string {
+	return self.wrap(f.table)
+}
+
+func (self *baseGlammar) formSub(f fromComponent) string {
+	return combine("(", self.compile(f.builder), ")", "as", self.wrap(f.builder.table))
+}
+
+func (self *baseGlammar) formExp(f fromComponent) string {
+	return self.prepareRaw(f.table)
 }
 
 // Компиляция Join
@@ -150,7 +177,7 @@ func (self *baseGlammar) whereGroup(w whereComponent) string {
 }
 
 func (self *baseGlammar) whereRaw(w whereComponent) string {
-	return toString(w.value)
+	return self.prepareRaw(w.value)
 }
 
 func (self *baseGlammar) whereIn(w whereComponent) string {
@@ -214,7 +241,7 @@ func (self *baseGlammar) havingBase(h havingComponent) string {
 }
 
 func (self *baseGlammar) havingRaw(h havingComponent) string {
-	return toString(h.value)
+	return self.prepareRaw(h.value)
 }
 
 func (self *baseGlammar) havingGroup(h havingComponent) string {
@@ -326,7 +353,7 @@ func (self *baseGlammar) wrap(values ...interface{}) string {
 	buf := make([]string, len(values))
 	for k, v := range values {
 		if exp, ok := v.(Expression); ok {
-			buf[k] = exp.String()
+			buf[k] = self.prepareRaw(exp)
 			continue
 		}
 

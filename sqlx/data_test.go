@@ -9,11 +9,45 @@ func TestDataDriver(t *testing.T) {
 	Driver("pgsql")
 }
 
-func TestDataTable(t *testing.T) {
+func TestDataTable1(t *testing.T) {
 	expect := []interface{}{}
 	result := Table("users").Data()
 	if !DataEqual(result, expect) {
-		t.Errorf("Expect result to equal in func TestDataTable.\nResult: %v\nExpect: %v", result, expect)
+		t.Errorf("Expect result to equal in func TestDataTable1.\nResult: %v\nExpect: %v", result, expect)
+	}
+}
+
+func TestDataTable2(t *testing.T) {
+	expect := []interface{}{1, 2, 3, 21}
+	result := Table(func(builder *Builder) {
+		builder.Select("*").From("users").WhereIn("id", List{1, 2, 3})
+	}).Where("age", ">", 21).Data()
+	if !DataEqual(result, expect) {
+		t.Errorf("Expect result to equal in func TestDataTable2.\nResult: %v\nExpect: %v", result, expect)
+	}
+}
+
+func TestDataTable3(t *testing.T) {
+	expect := []interface{}{1, 2, 3, 21}
+	result := Table(Raw("(SELECT * FROM users WHERE id IN (?, ?, ?) as users", 1, 2, 3)).Where("age", ">", 21).Data()
+	if !DataEqual(result, expect) {
+		t.Errorf("Expect result to equal in func TestDataTable3.\nResult: %v\nExpect: %v", result, expect)
+	}
+}
+
+func TestDataSelect1(t *testing.T) {
+	expect := []interface{}{1, 2}
+	result := Table("users").Select("name", Raw("(SELECT age FROM ag WHERE id = ? LIMIT 1) as age", 1)).Where("id", "=", 2).Data()
+	if !DataEqual(result, expect) {
+		t.Errorf("Expect result to equal in func TestDataSelect1.\nResult: %v\nExpect: %v", result, expect)
+	}
+}
+
+func TestDataSelect2(t *testing.T) {
+	expect := []interface{}{1, 2}
+	result := Table("users").SelectRaw("(SELECT age FROM ag WHERE id = ? LIMIT 1) as age", 1).Where("id", "=", 2).Data()
+	if !DataEqual(result, expect) {
+		t.Errorf("Expect result to equal in func TestDataSelect2.\nResult: %v\nExpect: %v", result, expect)
 	}
 }
 
@@ -43,11 +77,19 @@ func TestDataWhereGroup(t *testing.T) {
 	}
 }
 
-func TestDataWhereRaw(t *testing.T) {
+func TestDataWhereRaw1(t *testing.T) {
 	expect := []interface{}{}
 	result := Table("users").WhereRaw("id = 1").OrWhere("age", "=", Raw("2")).Select("*").Data()
 	if !DataEqual(result, expect) {
-		t.Errorf("Expect result to equal in func TestDataWhereRaw.\nResult: %v\nExpect: %v", result, expect)
+		t.Errorf("Expect result to equal in func TestDataWhereRaw1.\nResult: %v\nExpect: %v", result, expect)
+	}
+}
+
+func TestDataWhereRaw2(t *testing.T) {
+	expect := []interface{}{1, 2, 3}
+	result := Table("users").Where("age", "=", 1).OrWhereRaw("age = ?", 2).OrWhere("age", "=", Raw("(SELECT age FROM users WHERE id = ? LIMIT 1)", 3)).Data()
+	if !DataEqual(result, expect) {
+		t.Errorf("Expect result to equal in func TestDataWhereRaw2.\nResult: %v\nExpect: %v", result, expect)
 	}
 }
 

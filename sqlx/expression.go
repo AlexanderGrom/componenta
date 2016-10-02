@@ -1,15 +1,21 @@
 package sqlx
 
 type Expression struct {
-	data string
+	value    string
+	bindings []interface{}
 }
 
 func (self Expression) String() string {
-	return self.data
+	return self.value
 }
 
-func Raw(exp string) Expression {
+func (self Expression) Data() []interface{} {
+	return self.bindings
+}
+
+func Raw(exp string, params ...interface{}) Expression {
 	return Expression{
-		data: exp,
+		value:    exp,
+		bindings: params,
 	}
 }
