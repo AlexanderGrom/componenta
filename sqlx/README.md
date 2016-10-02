@@ -39,7 +39,7 @@ func main() {
 }
 ```
 
-**Ображение к талблице по её имени**
+**Обращение к таблице по её имени**
 ```go
 // SELECT * FROM "users"
 sql := sqlx.Table("users").Sql()
@@ -80,7 +80,7 @@ sql := sqlx.Table("users").
     Sql()
 ```
 
-**Сырые вырожения в Select**
+**Сырые выражения в Select**
 ```go
 // SELECT "age", COUNT(*) as count FROM "users" GROUP BY "count"
 sql := sqlx.Table("users").
@@ -129,7 +129,7 @@ sql := sqlx.Table("users").
     Sql()
 ```
 
-**Комбиная условий (And)**
+**Комбинация условий (And)**
 ```go
 // SELECT * FROM "users" WHERE "age" >= $1 AND "created_at" < $2
 sql := sqlx.sqlx.Table("users").
@@ -138,7 +138,7 @@ sql := sqlx.sqlx.Table("users").
     Sql().
 ```
 
-**Комбиная условий (Or)**
+**Комбинация условий (Or)**
 ```go
 // SELECT * FROM "users" WHERE "id" = $1 OR "id" = $2
 sql := sqlx.Table("users").
@@ -202,7 +202,7 @@ sql := sqlx.Table("users").
     }).Sql()
 ```
 
-**Группирока (Group By)**
+**Группировка (Group By)**
 ```go
 // SELECT "country", "city", COUNT(*) as "count" FROM "users" WHERE "age" > $1 GROUP BY "country", "city"
 sql := sqlx.Table("users").
@@ -213,7 +213,7 @@ sql := sqlx.Table("users").
     Sql()
 ```
 
-**Сырые группироки**
+**Сырые группировки**
 ```go
 // SELECT to_char(created_at, 'YYYY-MM-DD') as date, COUNT(*) as "count" FROM "users" WHERE "age" > $1 GROUP BY to_char(crated_at, 'YYYY-MM-DD')
 sql := sqlx.Table("users").
