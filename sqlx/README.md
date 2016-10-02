@@ -491,8 +491,10 @@ func main() {
 		}
 	})
 
-    if err := rows.Err(); err != nil {
-		return log.Fatalln("DB Rows:", err)
-	}
+    if err != nil {
+        log.Fatalln("DB Query:", err)
+    }
+
+    db.Close()
 }
 ```
