@@ -29,9 +29,18 @@ func TestDataTable2(t *testing.T) {
 
 func TestDataTable3(t *testing.T) {
 	expect := []interface{}{1, 2, 3, 21}
-	result := Table(Raw("(SELECT * FROM users WHERE id IN (?, ?, ?) as users", 1, 2, 3)).Where("age", ">", 21).Data()
+	subque := Table("users").WhereIn("id", List{1, 2, 3})
+	result := Table(subque).Where("age", ">", 21).Data()
 	if !DataEqual(result, expect) {
 		t.Errorf("Expect result to equal in func TestDataTable3.\nResult: %v\nExpect: %v", result, expect)
+	}
+}
+
+func TestDataTable4(t *testing.T) {
+	expect := []interface{}{1, 2, 3, 21}
+	result := Table(Raw("(SELECT * FROM users WHERE id IN (?, ?, ?) as users", 1, 2, 3)).Where("age", ">", 21).Data()
+	if !DataEqual(result, expect) {
+		t.Errorf("Expect result to equal in func TestDataTable4.\nResult: %v\nExpect: %v", result, expect)
 	}
 }
 
@@ -112,13 +121,22 @@ func TestDataWhereInList(t *testing.T) {
 	}
 }
 
-func TestDataWhereInSub(t *testing.T) {
+func TestDataWhereInSub1(t *testing.T) {
 	expect := []interface{}{"Moscow"}
 	result := Table("users").WhereIn("id", func(builder *Builder) {
 		builder.Select("user_id").From("orders").Where("city", "=", "Moscow")
 	}).Select("*").Data()
 	if !DataEqual(result, expect) {
-		t.Errorf("Expect result to equal in func TestDataWhereInSub.\nResult: %v\nExpect: %v", result, expect)
+		t.Errorf("Expect result to equal in func TestDataWhereInSub1.\nResult: %v\nExpect: %v", result, expect)
+	}
+}
+
+func TestDataWhereInSub2(t *testing.T) {
+	expect := []interface{}{"Moscow"}
+	subque := Table("orders").Where("city", "=", "Moscow").Select("user_id")
+	result := Table("users").WhereIn("id", subque).Select("*").Data()
+	if !DataEqual(result, expect) {
+		t.Errorf("Expect result to equal in func TestDataWhereInSub2.\nResult: %v\nExpect: %v", result, expect)
 	}
 }
 

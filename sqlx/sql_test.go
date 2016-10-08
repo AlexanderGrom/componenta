@@ -37,10 +37,19 @@ func TestSqlTable3(t *testing.T) {
 }
 
 func TestSqlTable4(t *testing.T) {
+	expect := `SELECT * FROM ( SELECT * FROM "users" WHERE "id" = $1 ) as "users"`
+	subque := Table("users").Where("id", "=", 1)
+	result := Table(subque).Sql()
+	if result != expect {
+		t.Errorf("Expect result to equal in func TestSqlTable4.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestSqlTable5(t *testing.T) {
 	expect := `SELECT * FROM (SELECT * FROM users WHERE id IN ($1, $2, $3)) as users WHERE "age" > $4`
 	result := Table(Raw("(SELECT * FROM users WHERE id IN (?, ?, ?)) as users", 1, 2, 3)).Where("age", ">", 21).Sql()
 	if result != expect {
-		t.Errorf("Expect result to equal in func TestSqlTable4.\nResult: %s\nExpect: %s", result, expect)
+		t.Errorf("Expect result to equal in func TestSqlTable5.\nResult: %s\nExpect: %s", result, expect)
 	}
 }
 
@@ -211,6 +220,15 @@ func TestSqlWhereInSub2(t *testing.T) {
 		}).Select("*").Sql()
 	if result != expect {
 		t.Errorf("Expect result to equal in func TestSqlWhereInSub2.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestSqlWhereInSub3(t *testing.T) {
+	expect := `SELECT * FROM "users" WHERE "deleted" = $1 AND "id" IN ( SELECT "user_id" FROM "orders" WHERE "city" = $2 )`
+	subque := Table("orders").Where("city", "=", "Moscow").Select("user_id")
+	result := Table("users").Where("deleted", "=", "1").WhereIn("id", subque).Select("*").Sql()
+	if result != expect {
+		t.Errorf("Expect result to equal in func TestSqlWhereInSub3.\nResult: %s\nExpect: %s", result, expect)
 	}
 }
 

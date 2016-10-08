@@ -105,8 +105,10 @@ func (self *Builder) From(table interface{}) *Builder {
 	switch v := table.(type) {
 	case string:
 		self.fromStr(v)
-	case func(*Builder):
+	case *Builder:
 		self.fromSub(v)
+	case func(*Builder):
+		self.fromFun(v)
 	case Expression:
 		self.fromExp(v)
 	default:
@@ -123,7 +125,15 @@ func (self *Builder) fromStr(table string) {
 	})
 }
 
-func (self *Builder) fromSub(callback func(*Builder)) {
+func (self *Builder) fromSub(builder *Builder) {
+	self.components.From = append(self.components.From, fromComponent{
+		kind:    "sub",
+		builder: builder,
+	})
+	self.bind("from", builder.Data()...)
+}
+
+func (self *Builder) fromFun(callback func(*Builder)) {
 	builder := NewBuilder()
 	callback(builder)
 	self.components.From = append(self.components.From, fromComponent{
@@ -336,8 +346,10 @@ func (self *Builder) whereIn(column string, values interface{}, boolean string, 
 	switch v := values.(type) {
 	case List:
 		self.whereInList(column, v, boolean, not)
-	case func(*Builder):
+	case *Builder:
 		self.whereInSub(column, v, boolean, not)
+	case func(*Builder):
+		self.whereInFun(column, v, boolean, not)
 	default:
 		self.whereInList(column, List{values}, boolean, not)
 	}
@@ -357,7 +369,21 @@ func (self *Builder) whereInList(column string, list List, boolean string, not b
 	self.bind("where", list...)
 }
 
-func (self *Builder) whereInSub(column string, callback func(*Builder), boolean string, not bool) {
+func (self *Builder) whereInSub(column string, builder *Builder, boolean string, not bool) {
+	kind := "insub"
+	if not {
+		kind = "notinsub"
+	}
+	self.components.Where = append(self.components.Where, whereComponent{
+		kind:    kind,
+		column:  column,
+		builder: builder,
+		boolean: boolean,
+	})
+	self.bind("where", builder.Data()...)
+}
+
+func (self *Builder) whereInFun(column string, callback func(*Builder), boolean string, not bool) {
 	kind := "insub"
 	if not {
 		kind = "notinsub"
@@ -588,7 +614,7 @@ func (self *Builder) Sql() string {
 
 func (self *Builder) Data() []interface{} {
 	if self.kind == "" {
-		self.kind = "select"
+		self.Select("*")
 	}
 	bindings := make([]interface{}, 0)
 	for _, k := range bindingsMap[self.kind] {
