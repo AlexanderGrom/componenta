@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"errors"
+	"os"
 	"strings"
 )
 
@@ -14,14 +15,15 @@ var (
 
 // Парсер файла конфигурации
 type parser struct {
-	curPos  int           // Текущая позиция символа
-	curChar rune          // Текущий символ (руна)
-	textBuf []rune        // Буфер с рунами
-	textLen int           // Длина буфера рун
-	state   func()        // Текущее состояние автомата
-	config  Config        // Собранный конфиг
-	key     string        // Найденный ключ
-	value   []interface{} // Найденные значения
+	curPos   int           // Текущая позиция символа
+	stackPos []int         // Стек сохраненных позиций
+	curChar  rune          // Текущий символ (руна)
+	textBuf  []rune        // Буфер с рунами
+	textLen  int           // Длина буфера рун
+	state    func()        // Текущее состояние автомата
+	config   Config        // Собранный конфиг
+	key      string        // Найденный ключ
+	value    []interface{} // Найденные значения
 }
 
 // Конструктор
@@ -75,6 +77,28 @@ func (self *parser) movePos(pos int) bool {
 	return true
 }
 
+// Сохранение позиции
+func (self *parser) savePos() {
+	self.stackPos = append(self.stackPos, self.curPos)
+}
+
+// Удаляет последнюю сохраненную позицию
+func (self *parser) removePos() {
+	if len(self.stackPos) == 0 {
+		return
+	}
+	self.stackPos = self.stackPos[:len(self.stackPos)-1]
+}
+
+// Восстановление последней сохраненной позиции
+func (self *parser) restorePos() {
+	if len(self.stackPos) == 0 {
+		return
+	}
+	self.movePos(self.stackPos[len(self.stackPos)-1])
+	self.stackPos = self.stackPos[:len(self.stackPos)-1]
+}
+
 // Определяет конец буфера с данными
 func (self *parser) isEOF() bool {
 	return self.curPos >= self.textLen
@@ -95,10 +119,30 @@ func (self *parser) isKey(char rune) bool {
 	return false
 }
 
-// Пробельные символы
+// Символы из которых может состоять имя переменной
+func (self *parser) isVar(char rune) bool {
+	switch {
+	case char >= 'A' && char <= 'Z':
+		return true
+	case char == '_':
+		return true
+	}
+	return false
+}
+
+// Пробельные символы и символы перевода строк
 func (self *parser) isSpace(char rune) bool {
 	switch char {
 	case ' ', '\t', '\r', '\n':
+		return true
+	}
+	return false
+}
+
+// Пробельные символы
+func (self *parser) isEmpty(char rune) bool {
+	switch char {
+	case ' ', '\t':
 		return true
 	}
 	return false
@@ -119,6 +163,26 @@ func (self *parser) isComment(char rune) bool {
 	return char == '#'
 }
 
+// Символ переменной
+func (self *parser) isDollar(char rune) bool {
+	return char == '$'
+}
+
+// Символ тернарного оператора ИЛИ
+func (self *parser) isTernary(char rune) bool {
+	return char == '|'
+}
+
+// Символ открывающей фигурной скобки
+func (self *parser) isOpenVarBracket(char rune) bool {
+	return char == '{'
+}
+
+// Символ закрывающей фигурной скобки
+func (self *parser) isCloseVarBracket(char rune) bool {
+	return char == '}'
+}
+
 // Символы кавычек
 func (self *parser) isQuote(char rune) bool {
 	switch char {
@@ -128,15 +192,30 @@ func (self *parser) isQuote(char rune) bool {
 	return false
 }
 
+// Символ экранирования
+func (self *parser) isEscape(char rune) bool {
+	return char == '\\'
+}
+
 // Символы разделения элементов в списке элементов
 func (self *parser) isSeparator(char rune) bool {
 	return char == ','
 }
 
 // Пропускает пробелы и символы перевода строк и возвращает кол-во пропущенных
-func (self *parser) skipSpaces() int {
+func (self *parser) skipEmpty() int {
 	count := 0
 	for self.isSpace(self.curChar) {
+		self.moveNextPos()
+		count++
+	}
+	return count
+}
+
+// Пропускает только пробельные символы и возвращает кол-во пропущенных
+func (self *parser) skipSpaces() int {
+	count := 0
+	for self.isEmpty(self.curChar) {
 		self.moveNextPos()
 		count++
 	}
@@ -157,7 +236,7 @@ func (self *parser) skipTrash() int {
 	count := 0
 	for {
 		chars := 0
-		chars += self.skipSpaces()
+		chars += self.skipEmpty()
 		chars += self.skipComment()
 		count += chars
 		if chars > 0 {
@@ -176,6 +255,33 @@ func (self *parser) skipLine() int {
 		count++
 	}
 	return count
+}
+
+// Грабит имя переменной из формата ${VARNAME}
+func (self *parser) grabVar() string {
+	if !self.isDollar(self.curChar) {
+		return ""
+	}
+
+	self.moveNextPos()
+
+	if !self.isOpenVarBracket(self.curChar) {
+		return ""
+	}
+
+	self.moveNextPos()
+
+	buff := bytes.Buffer{}
+	for self.isVar(self.curChar) && !self.isEOF() {
+		buff.WriteRune(self.curChar)
+		self.moveNextPos()
+	}
+
+	if !self.isCloseVarBracket(self.curChar) {
+		return ""
+	}
+
+	return buff.String()
 }
 
 // Извлечение ключей и их значений из буфера данных
@@ -207,7 +313,7 @@ func (self *parser) matchKey() {
 
 // Поиск символа равенства, который следует за ключом
 func (self *parser) matchEq() {
-	self.skipSpaces()
+	self.skipEmpty()
 	if self.isEq(self.curChar) {
 		self.moveNextPos()
 		self.saveState(self.matchValue)
@@ -227,10 +333,22 @@ func (self *parser) matchValue() {
 		self.moveNextPos()
 
 		buff := bytes.Buffer{}
-		for !self.isEOF() && (self.curChar != quote || escape == true) {
-			buff.WriteRune(self.curChar)
+		for !self.isEOF() && (self.curChar != quote || escape) {
+			if self.isDollar(self.curChar) && !escape {
+				self.savePos()
+				val := self.grabVar()
+				if val == "" {
+					self.restorePos()
+					buff.WriteRune(self.curChar)
+				} else {
+					self.removePos()
+					buff.WriteString(os.Getenv(val))
+				}
+			} else if !self.isEscape(self.curChar) || escape {
+				buff.WriteRune(self.curChar)
+			}
 
-			escape = (self.curChar == '\\')
+			escape = self.isEscape(self.curChar)
 
 			self.moveNextPos()
 		}
@@ -241,19 +359,43 @@ func (self *parser) matchValue() {
 
 		self.value = append(self.value, buff.String())
 		self.moveNextPos()
+		self.skipSpaces()
 	} else {
+		escape := false
 		buff := bytes.Buffer{}
-		for !self.isNL(self.curChar) && !self.isEOF() && !self.isSeparator(self.curChar) && !self.isComment(self.curChar) {
-			buff.WriteRune(self.curChar)
+		for !self.isNL(self.curChar) && !self.isEOF() && !self.isSeparator(self.curChar) && !self.isComment(self.curChar) && !self.isTernary(self.curChar) {
+			if self.isDollar(self.curChar) && !escape {
+				self.savePos()
+				val := self.grabVar()
+				if val == "" {
+					self.restorePos()
+					buff.WriteRune(self.curChar)
+				} else {
+					self.removePos()
+					buff.WriteString(os.Getenv(val))
+				}
+			} else if !self.isEscape(self.curChar) || escape {
+				buff.WriteRune(self.curChar)
+			}
+
+			escape = self.isEscape(self.curChar)
+
 			self.moveNextPos()
 		}
 
 		self.value = append(self.value, strings.TrimSpace(buff.String()))
 	}
 
-	if self.isSeparator(self.curChar) {
+	if self.isTernary(self.curChar) {
+		if self.value[len(self.value)-1] == "" {
+			self.value = self.value[:len(self.value)-1]
+		}
+		self.saveState(self.matchValue)
+		self.moveNextPos()
+	} else if self.isSeparator(self.curChar) {
 		self.saveState(self.matchValueList)
 		self.moveNextPos()
+		self.skipEmpty()
 	} else {
 		self.saveState(self.saveConfig)
 		self.skipLine()

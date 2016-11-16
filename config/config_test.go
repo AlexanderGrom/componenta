@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"reflect"
 	"testing"
 )
@@ -8,6 +9,7 @@ import (
 var cfg Config
 
 func TestCommon(t *testing.T) {
+	os.Setenv("TESTVARNAME", "componenta")
 	var err error
 	cfg, err = Use("./test.conf")
 
@@ -135,11 +137,92 @@ func TestKey13(t *testing.T) {
 }
 
 func TestKey14(t *testing.T) {
-	expect := `value[\"key\"]`
+	expect := `value["key"]`
 	result := cfg.GetString("key14")
 
 	if expect != result {
 		t.Errorf("Expect result to equal in TestKey14.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestKey15(t *testing.T) {
+	expect := `componenta`
+	result := cfg.GetString("key15")
+
+	if expect != result {
+		t.Errorf("Expect result to equal in TestKey15.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestKey16(t *testing.T) {
+	expect := `value`
+	result := cfg.GetString("key16")
+
+	if expect != result {
+		t.Errorf("Expect result to equal in TestKey16.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestKey17(t *testing.T) {
+	expect := []int64{1, 2, 3, 4, 5, 6}
+	result := cfg.GetInts("key17")
+
+	if !DataEqual(result, expect) {
+		t.Errorf("Expect result to equal in TestKey17.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestKey18(t *testing.T) {
+	expect := `value`
+	result := cfg.GetString("key18")
+
+	if expect != result {
+		t.Errorf("Expect result to equal in TestKey18.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestKey19(t *testing.T) {
+	expect := `value`
+	result := cfg.GetString("key19")
+
+	if expect != result {
+		t.Errorf("Expect result to equal in TestKey19.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestKey20(t *testing.T) {
+	expect := `componenta/src`
+	result := cfg.GetString("key20")
+
+	if expect != result {
+		t.Errorf("Expect result to equal in TestKey20.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestKey21(t *testing.T) {
+	expect := `${TESTVARNAME/src`
+	result := cfg.GetString("key21")
+
+	if expect != result {
+		t.Errorf("Expect result to equal in TestKey21.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestKey22(t *testing.T) {
+	expect := `/var/componenta/src`
+	result := cfg.GetString("key22")
+
+	if expect != result {
+		t.Errorf("Expect result to equal in TestKey22.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestKey23(t *testing.T) {
+	expect := `${TESTVARNAME}`
+	result := cfg.GetString("key23")
+
+	if expect != result {
+		t.Errorf("Expect result to equal in TestKey23.\nResult: %s\nExpect: %s", result, expect)
 	}
 }
 
