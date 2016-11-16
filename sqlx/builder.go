@@ -31,7 +31,7 @@ func (self Data) Values() []interface{} {
 }
 
 // Драйвер грамматики, который будет использован для построения запроса
-// Параметр name может принимать значения: mysql, pgsql, sqlite
+// Параметр name может принимать значения: mysql, postgres, sqlite3
 func Driver(name string) {
 	glammar, ok := drivers[name]
 	if !ok {

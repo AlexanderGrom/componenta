@@ -21,7 +21,7 @@ func main() {
         log.Fatalln("DB Connecting:", err)
     }
 
-	sqlx.Driver("pgsql")
+	sqlx.Driver("postgres")
 
 	// SELECT "id", "name" FROM "users" WHERE "age" > $1 ORDER BY "created_at" DESC LIMIT $2;
 	query := sqlx.Table("users").

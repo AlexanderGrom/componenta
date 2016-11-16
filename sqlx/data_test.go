@@ -6,7 +6,7 @@ import (
 
 // Устанавливаем драйвер для всех тестов
 func TestDataDriver(t *testing.T) {
-	Driver("pgsql")
+	Driver("postgres")
 }
 
 func TestDataTable1(t *testing.T) {

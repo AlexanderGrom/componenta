@@ -12,7 +12,7 @@ type pgsqlGlammar struct {
 var _ glammar = (*pgsqlGlammar)(nil)
 
 func init() {
-	registerDriver("pgsql", newPgsqlGlammar)
+	registerDriver("postgres", newPgsqlGlammar)
 }
 
 func newPgsqlGlammar() glammar {

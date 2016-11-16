@@ -10,7 +10,7 @@ type sqliteGlammar struct {
 var _ glammar = (*sqliteGlammar)(nil)
 
 func init() {
-	registerDriver("mysql", newSqliteGlammar)
+	registerDriver("sqlite3", newSqliteGlammar)
 }
 
 func newSqliteGlammar() glammar {
