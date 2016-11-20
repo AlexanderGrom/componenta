@@ -36,13 +36,13 @@ func main() {
         ctx.Res.Redirect("/test/name")
         return 301, nil
     })
-    
+
     r.Use(func(ctx *router.Ctx, next router.Next) {
 		log.Println("Global Middleware")
 		next()
 	})
 
-	g := route.Group("/group")
+	g := r.Group("/group")
 	g.Use(func(ctx *router.Ctx, next router.Next) {
 		log.Println("Group Middleware")
 		next()
@@ -56,7 +56,7 @@ func main() {
 			next()
 		})
 	}
-    
+
     mux := r.Complete()
 
     if err := http.ListenAndServe(":8080", mux); err != nil {
