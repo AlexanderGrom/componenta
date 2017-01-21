@@ -64,7 +64,7 @@ import (
 )
 
 func main() {
-    cfg, _ := config.Use("./config/database.conf")
+    cfg, _ := config.Use("${HOME}/config/database.conf")
 
     fmt.Println(cfg.GetString("key1"))
     fmt.Println(cfg.GetBool("key5"))

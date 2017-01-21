@@ -9,8 +9,8 @@ import (
 
 // Ошибки
 var (
-	ErrParseKey   = errors.New("сonfig: parse error (key)")
-	ErrParseQuote = errors.New("сonfig: parse error (quote)")
+	ErrParseKey   = errors.New("config: parse error (key)")
+	ErrParseQuote = errors.New("config: parse error (quote)")
 )
 
 // Парсер файла конфигурации
@@ -40,7 +40,7 @@ func (self *parser) Parse(r []rune) Config {
 	self.movePos(0)
 	self.saveState(self.matchKey)
 
-	return self.extractСonfig()
+	return self.extractConfig()
 }
 
 // Очистка временных данных
@@ -285,7 +285,7 @@ func (self *parser) grabVar() string {
 }
 
 // Извлечение ключей и их значений из буфера данных
-func (self *parser) extractСonfig() Config {
+func (self *parser) extractConfig() Config {
 	for !self.isEOF() {
 		self.state()
 	}
@@ -408,7 +408,7 @@ func (self *parser) matchValueList() {
 	self.saveState(self.matchValue)
 }
 
-// Поиск значения если мы в состоянии списка значений
+// Сохранение найденного конфига и начало поиска нового ключа
 func (self *parser) saveConfig() {
 	self.config[self.key] = self.value
 	self.key = ""
