@@ -7,6 +7,8 @@ import (
 	"reflect"
 )
 
+var ErrNoRows = errors.New("sqlx: no rows in result set")
+
 type Scanner struct {
 	rows *sql.Rows
 }
@@ -109,7 +111,7 @@ func (self *Scanner) scanSlice(a interface{}) error {
 	}
 
 	if sliceValue.Len() == 0 {
-		return sql.ErrNoRows
+		return ErrNoRows
 	}
 
 	if err := self.rows.Close(); err != nil {
@@ -141,7 +143,7 @@ func (self *Scanner) scanStruct(a interface{}) error {
 		if err := self.rows.Err(); err != nil {
 			return fmt.Errorf("sqlx: %s", err)
 		}
-		return sql.ErrNoRows
+		return ErrNoRows
 	}
 
 	columns, err := self.rows.Columns()
@@ -188,7 +190,7 @@ func (self *Scanner) scanVars(a ...interface{}) error {
 		if err := self.rows.Err(); err != nil {
 			return fmt.Errorf("sqlx: %s", err)
 		}
-		return sql.ErrNoRows
+		return ErrNoRows
 	}
 
 	if err := self.rows.Scan(a...); err != nil {
