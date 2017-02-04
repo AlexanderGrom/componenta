@@ -4,10 +4,36 @@ import (
 	"strings"
 )
 
+// Интерфейс, описываем тут те методы
+// для которых хотим иметь возможность переопределения
 type glammar interface {
+	wrap(...interface{}) string
+	wrapp(value string) string
 	wrapQuote(string) string
 	parameter(...interface{}) string
 	prepareRaw(interface{}) string
+	combineSelect(*Builder) string
+	combineInsert(*Builder) string
+	combineUpdate(*Builder) string
+	combineDelete(*Builder) string
+	compile(*Builder) string
+	compileSelect(*Builder) string
+	compileFrom(*Builder) string
+	compileJoin(*Builder) string
+	compileWhere(*Builder) string
+	compileGroup(*Builder) string
+	compileHaving(*Builder) string
+	compileOrder(*Builder) string
+	compileLimit(*Builder) string
+	compileOffset(*Builder) string
+	compileDelete(*Builder) string
+	compileUpdate(*Builder) string
+	compileSet(*Builder) string
+	compileInsert(*Builder) string
+	compileInto(*Builder) string
+	compileColumns(*Builder) string
+	compileValues(*Builder) string
+	compileReturning(*Builder) string
 }
 
 // Базовая граматика
@@ -15,50 +41,47 @@ type baseGlammar struct {
 	glammar
 }
 
-func newBaseGlammar(g glammar) *baseGlammar {
-	return &baseGlammar{g}
-}
-
 // Комбинация Select
 func (self *baseGlammar) combineSelect(b *Builder) string {
 	return combine(
-		self.compileSelect(b),
-		self.compileFrom(b),
-		self.compileJoin(b),
-		self.compileWhere(b),
-		self.compileGroup(b),
-		self.compileHaving(b),
-		self.compileOrder(b),
-		self.compileLimit(b),
-		self.compileOffset(b),
+		self.glammar.compileSelect(b),
+		self.glammar.compileFrom(b),
+		self.glammar.compileJoin(b),
+		self.glammar.compileWhere(b),
+		self.glammar.compileGroup(b),
+		self.glammar.compileHaving(b),
+		self.glammar.compileOrder(b),
+		self.glammar.compileLimit(b),
+		self.glammar.compileOffset(b),
 	)
 }
 
 // Комбинация Delete
 func (self *baseGlammar) combineDelete(b *Builder) string {
 	return combine(
-		self.compileDelete(b),
-		self.compileFrom(b),
-		self.compileWhere(b),
+		self.glammar.compileDelete(b),
+		self.glammar.compileFrom(b),
+		self.glammar.compileWhere(b),
 	)
 }
 
 // Комбинация Update
 func (self *baseGlammar) combineUpdate(b *Builder) string {
 	return combine(
-		self.compileUpdate(b),
-		self.compileSet(b),
-		self.compileWhere(b),
+		self.glammar.compileUpdate(b),
+		self.glammar.compileSet(b),
+		self.glammar.compileWhere(b),
 	)
 }
 
 // Комбинация Insert
 func (self *baseGlammar) combineInsert(b *Builder) string {
 	return combine(
-		self.compileInsert(b),
-		self.compileInto(b),
-		self.compileColumns(b),
-		self.compileValues(b),
+		self.glammar.compileInsert(b),
+		self.glammar.compileInto(b),
+		self.glammar.compileColumns(b),
+		self.glammar.compileValues(b),
+		self.glammar.compileReturning(b),
 	)
 }
 
@@ -67,7 +90,7 @@ func (self *baseGlammar) compileSelect(b *Builder) string {
 	buff := make([]interface{}, 0, len(b.components.Select)+len(b.components.Aggregate))
 	buff = append(buff, self.selectFields(b)...)
 	buff = append(buff, self.selectAggregates(b)...)
-	return "SELECT " + self.wrap(buff...)
+	return "SELECT " + self.glammar.wrap(buff...)
 }
 
 func (self *baseGlammar) selectFields(b *Builder) []interface{} {
@@ -77,7 +100,7 @@ func (self *baseGlammar) selectFields(b *Builder) []interface{} {
 func (self *baseGlammar) selectAggregates(b *Builder) []interface{} {
 	buff := make([]interface{}, len(b.components.Aggregate))
 	for k, v := range b.components.Aggregate {
-		buff[k] = Raw(strings.ToUpper(v.function) + "(" + self.wrap(v.column) + ") as " + self.wrap(v.alias))
+		buff[k] = Raw(strings.ToUpper(v.function) + "(" + self.glammar.wrap(v.column) + ") as " + self.glammar.wrap(v.alias))
 	}
 	return buff
 }
@@ -105,15 +128,15 @@ func (self *baseGlammar) compileFrom(b *Builder) string {
 }
 
 func (self *baseGlammar) formStr(f fromComponent) string {
-	return self.wrap(f.table)
+	return self.glammar.wrap(f.table)
 }
 
 func (self *baseGlammar) formSub(f fromComponent) string {
-	return combine("(", self.compile(f.builder), ")", "as", self.wrap(f.builder.table))
+	return combine("(", self.glammar.compile(f.builder), ")", "as", self.glammar.wrap(f.builder.table))
 }
 
 func (self *baseGlammar) formExp(f fromComponent) string {
-	return self.prepareRaw(f.table)
+	return self.glammar.prepareRaw(f.table)
 }
 
 // Компиляция Join
@@ -123,7 +146,7 @@ func (self *baseGlammar) compileJoin(b *Builder) string {
 	}
 	buff := make([]string, len(b.components.Join))
 	for k, v := range b.components.Join {
-		buff[k] = combine(v.kind, "JOIN", self.wrap(v.table), "ON (", self.wrap(v.column1), v.operator, self.wrap(v.column2), ")")
+		buff[k] = combine(v.kind, "JOIN", self.glammar.wrap(v.table), "ON (", self.glammar.wrap(v.column1), v.operator, self.glammar.wrap(v.column2), ")")
 	}
 	return strings.Join(buff, " ")
 }
@@ -169,47 +192,47 @@ func (self *baseGlammar) compileWhere(b *Builder) string {
 }
 
 func (self *baseGlammar) whereBase(w whereComponent) string {
-	return combine(self.wrap(w.column), w.operator, self.parameter(w.value))
+	return combine(self.glammar.wrap(w.column), w.operator, self.glammar.parameter(w.value))
 }
 
 func (self *baseGlammar) whereGroup(w whereComponent) string {
-	return "( " + self.compileWhere(w.builder)[6:] + " )"
+	return "( " + self.glammar.compileWhere(w.builder)[6:] + " )"
 }
 
 func (self *baseGlammar) whereRaw(w whereComponent) string {
-	return self.prepareRaw(w.value)
+	return self.glammar.prepareRaw(w.value)
 }
 
 func (self *baseGlammar) whereIn(w whereComponent) string {
-	return combine(self.wrap(w.column), "IN (", self.parameter(w.list...), ")")
+	return combine(self.glammar.wrap(w.column), "IN (", self.glammar.parameter(w.list...), ")")
 }
 
 func (self *baseGlammar) whereNotIn(w whereComponent) string {
-	return combine(self.wrap(w.column), "NOT IN (", self.parameter(w.list...), ")")
+	return combine(self.glammar.wrap(w.column), "NOT IN (", self.glammar.parameter(w.list...), ")")
 }
 
 func (self *baseGlammar) whereInSub(w whereComponent) string {
-	return combine(self.wrap(w.column), "IN (", self.compile(w.builder), ")")
+	return combine(self.glammar.wrap(w.column), "IN (", self.glammar.compile(w.builder), ")")
 }
 
 func (self *baseGlammar) whereNotInSub(w whereComponent) string {
-	return combine(self.wrap(w.column), "NOT IN (", self.compile(w.builder), ")")
+	return combine(self.glammar.wrap(w.column), "NOT IN (", self.glammar.compile(w.builder), ")")
 }
 
 func (self *baseGlammar) whereBetween(w whereComponent) string {
-	return combine(self.wrap(w.column), "BETWEEN", self.parameter(w.min), "AND", self.parameter(w.max))
+	return combine(self.glammar.wrap(w.column), "BETWEEN", self.glammar.parameter(w.min), "AND", self.glammar.parameter(w.max))
 }
 
 func (self *baseGlammar) whereNotBetween(w whereComponent) string {
-	return combine(self.wrap(w.column), "NOT BETWEEN", self.parameter(w.min), "AND", self.parameter(w.max))
+	return combine(self.glammar.wrap(w.column), "NOT BETWEEN", self.glammar.parameter(w.min), "AND", self.glammar.parameter(w.max))
 }
 
 func (self *baseGlammar) whereNull(w whereComponent) string {
-	return self.wrap(w.column) + " IS NULL"
+	return self.glammar.wrap(w.column) + " IS NULL"
 }
 
 func (self *baseGlammar) whereNotNull(w whereComponent) string {
-	return self.wrap(w.column) + " IS NOT NULL"
+	return self.glammar.wrap(w.column) + " IS NOT NULL"
 }
 
 // Компиляция Having
@@ -237,15 +260,15 @@ func (self *baseGlammar) compileHaving(b *Builder) string {
 }
 
 func (self *baseGlammar) havingBase(h havingComponent) string {
-	return combine(self.wrap(h.column), h.operator, self.parameter(h.value))
+	return combine(self.glammar.wrap(h.column), h.operator, self.glammar.parameter(h.value))
 }
 
 func (self *baseGlammar) havingRaw(h havingComponent) string {
-	return self.prepareRaw(h.value)
+	return self.glammar.prepareRaw(h.value)
 }
 
 func (self *baseGlammar) havingGroup(h havingComponent) string {
-	return "( " + self.compileHaving(h.builder)[7:] + " )"
+	return "( " + self.glammar.compileHaving(h.builder)[7:] + " )"
 }
 
 // Компиляция Group By
@@ -253,7 +276,7 @@ func (self *baseGlammar) compileGroup(b *Builder) string {
 	if len(b.components.Group) == 0 {
 		return ""
 	}
-	return "GROUP BY " + self.wrap(b.components.Group...)
+	return "GROUP BY " + self.glammar.wrap(b.components.Group...)
 }
 
 // Компиляция Order By
@@ -265,7 +288,7 @@ func (self *baseGlammar) compileOrder(b *Builder) string {
 	buff := make([]string, len(b.components.Order))
 
 	for k, v := range b.components.Order {
-		buff[k] = self.wrap(v.column) + " " + v.direction
+		buff[k] = self.glammar.wrap(v.column) + " " + v.direction
 	}
 
 	return "ORDER BY " + strings.Join(buff, ", ")
@@ -276,7 +299,7 @@ func (self *baseGlammar) compileLimit(b *Builder) string {
 	if len(b.components.Limit) == 0 {
 		return ""
 	}
-	return "LIMIT " + self.parameter(b.components.Limit...)
+	return "LIMIT " + self.glammar.parameter(b.components.Limit...)
 }
 
 // Компиляция Offset
@@ -284,7 +307,7 @@ func (self *baseGlammar) compileOffset(b *Builder) string {
 	if len(b.components.Offset) == 0 {
 		return ""
 	}
-	return "OFFSET " + self.parameter(b.components.Offset...)
+	return "OFFSET " + self.glammar.parameter(b.components.Offset...)
 }
 
 // Компиляция Delete
@@ -294,7 +317,7 @@ func (self *baseGlammar) compileDelete(b *Builder) string {
 
 // Компиляция Update
 func (self *baseGlammar) compileUpdate(b *Builder) string {
-	return "UPDATE " + self.wrap(b.table)
+	return "UPDATE " + self.glammar.wrap(b.table)
 }
 
 // Компиляция Set
@@ -303,7 +326,7 @@ func (self *baseGlammar) compileSet(b *Builder) string {
 	buff := make([]string, 0, len(data))
 	keys := data.Keys()
 	for _, k := range keys {
-		buff = append(buff, combine(self.wrap(k), "=", self.parameter(data[k])))
+		buff = append(buff, combine(self.glammar.wrap(k), "=", self.glammar.parameter(data[k])))
 	}
 	return "SET " + strings.Join(buff, ", ")
 }
@@ -315,21 +338,26 @@ func (self *baseGlammar) compileInsert(b *Builder) string {
 
 // Компиляция Into
 func (self *baseGlammar) compileInto(b *Builder) string {
-	return "INTO " + self.wrap(b.components.Into...)
+	return "INTO " + self.glammar.wrap(b.components.Into...)
 }
 
 // Компиляция Columns
 func (self *baseGlammar) compileColumns(b *Builder) string {
-	return "( " + self.wrap(b.components.Columns...) + " )"
+	return "( " + self.glammar.wrap(b.components.Columns...) + " )"
 }
 
 // Компиляция Values
 func (self *baseGlammar) compileValues(b *Builder) string {
 	buff := make([]string, len(b.components.Values))
 	for k, v := range b.components.Values {
-		buff[k] = "( " + self.parameter(v...) + " )"
+		buff[k] = "( " + self.glammar.parameter(v...) + " )"
 	}
 	return "VALUES " + strings.Join(buff, ", ")
+}
+
+// Вставка Insert Returning id (заглушка)
+func (self *baseGlammar) compileReturning(b *Builder) string {
+	return ""
 }
 
 // Компилируем Builder
@@ -337,13 +365,13 @@ func (self *baseGlammar) compile(b *Builder) string {
 	result := ""
 	switch b.kind {
 	case "select":
-		result = self.combineSelect(b)
+		result = self.glammar.combineSelect(b)
 	case "insert":
-		result = self.combineInsert(b)
+		result = self.glammar.combineInsert(b)
 	case "update":
-		result = self.combineUpdate(b)
+		result = self.glammar.combineUpdate(b)
 	case "delete":
-		result = self.combineDelete(b)
+		result = self.glammar.combineDelete(b)
 	}
 	return result
 }
@@ -353,7 +381,7 @@ func (self *baseGlammar) wrap(values ...interface{}) string {
 	buf := make([]string, len(values))
 	for k, v := range values {
 		if exp, ok := v.(Expression); ok {
-			buf[k] = self.prepareRaw(exp)
+			buf[k] = self.glammar.prepareRaw(exp)
 			continue
 		}
 
@@ -363,11 +391,11 @@ func (self *baseGlammar) wrap(values ...interface{}) string {
 
 		switch {
 		case lenght == 2:
-			buf[k] = self.wrapp(segments[0]) + " as " + self.wrapQuote(segments[1])
+			buf[k] = self.glammar.wrapp(segments[0]) + " as " + self.glammar.wrapQuote(segments[1])
 		case lenght == 3:
-			buf[k] = self.wrapp(segments[0]) + " as " + self.wrapQuote(segments[2])
+			buf[k] = self.glammar.wrapp(segments[0]) + " as " + self.glammar.wrapQuote(segments[2])
 		default:
-			buf[k] = self.wrapp(str)
+			buf[k] = self.glammar.wrapp(str)
 		}
 	}
 	return strings.Join(buf, ", ")
@@ -382,9 +410,33 @@ func (self *baseGlammar) wrapp(value string) string {
 		if v == "*" {
 			wrapped[k] = v
 		} else {
-			wrapped[k] = self.wrapQuote(v)
+			wrapped[k] = self.glammar.wrapQuote(v)
 		}
 	}
 
 	return strings.Join(wrapped, ".")
+}
+
+func (self *baseGlammar) wrapQuote(v string) string {
+	return "`" + v + "`"
+}
+
+func (self *baseGlammar) placeholder() string {
+	return "?"
+}
+
+func (self *baseGlammar) parameter(p ...interface{}) string {
+	params := make([]string, len(p))
+	for k, v := range p {
+		if exp, ok := v.(Expression); ok {
+			params[k] = self.prepareRaw(exp)
+		} else {
+			params[k] = self.placeholder()
+		}
+	}
+	return strings.Join(params, ", ")
+}
+
+func (self *baseGlammar) prepareRaw(p interface{}) string {
+	return toString(p)
 }

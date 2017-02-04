@@ -6,6 +6,7 @@ import (
 )
 
 type pgsqlGlammar struct {
+	baseGlammar
 	placeholders int
 }
 
@@ -16,7 +17,9 @@ func init() {
 }
 
 func newPgsqlGlammar() glammar {
-	return &pgsqlGlammar{}
+	g := &pgsqlGlammar{}
+	g.baseGlammar.glammar = g
+	return g
 }
 
 func (self *pgsqlGlammar) wrapQuote(v string) string {
@@ -50,4 +53,12 @@ func (self *pgsqlGlammar) prepareRaw(p interface{}) string {
 		return str
 	}
 	return toString(p)
+}
+
+// Вставка Insert Returning id
+func (self *pgsqlGlammar) compileReturning(b *Builder) string {
+	if !b.enableReturnId {
+		return ""
+	}
+	return "RETURNING " + self.wrap("id")
 }

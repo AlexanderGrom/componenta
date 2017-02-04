@@ -65,10 +65,11 @@ func newBindings() map[string][]interface{} {
 }
 
 type Builder struct {
-	kind       string
-	table      string
-	components *components
-	bindings   map[string][]interface{}
+	kind           string
+	table          string
+	enableReturnId bool
+	components     *components
+	bindings       map[string][]interface{}
 }
 
 func NewBuilder() *Builder {
@@ -565,6 +566,13 @@ func (self *Builder) Insert(data ...Data) *Builder {
 	return self
 }
 
+func (self *Builder) ReturnId() *Builder {
+	if self.kind == "insert" {
+		self.enableReturnId = true
+	}
+	return self
+}
+
 func (self *Builder) Count(column interface{}, alias string) *Builder {
 	self.aggregate("count", column, alias)
 	return self
@@ -609,7 +617,7 @@ func (self *Builder) Sql() string {
 	if self.kind == "" {
 		self.Select("*")
 	}
-	return newBaseGlammar(driver()).compile(self)
+	return driver().compile(self)
 }
 
 func (self *Builder) Data() []interface{} {
@@ -623,10 +631,6 @@ func (self *Builder) Data() []interface{} {
 		}
 	}
 	return bindings
-}
-
-func (self *Builder) Scan() {
-
 }
 
 func (self *Builder) bind(k string, b ...interface{}) {

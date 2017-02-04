@@ -122,3 +122,23 @@ func toSnake(str string) string {
 
 	return string(out)
 }
+
+// Трансформация строки из Snake в CamelCase формат
+func toCamel(str string) string {
+	up := true
+	out := make([]rune, 0, len(str))
+
+	for _, c := range str {
+		if c == '_' {
+			up = true
+			continue
+		}
+		if up {
+			c = unicode.ToUpper(c)
+			up = false
+		}
+		out = append(out, c)
+	}
+
+	return string(out)
+}
