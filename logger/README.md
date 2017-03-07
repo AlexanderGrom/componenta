@@ -15,7 +15,7 @@ import (
 
 func main() {
 	log.SetOutput(&logger.Logger{
-		Filename: "/var/log/app/foo.log",
+		Filename: "${GOPATH}/app/foo.log",
 		MaxSize:  100, // megabytes
 		Everyday: true,
 	})

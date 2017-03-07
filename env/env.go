@@ -14,7 +14,7 @@ var (
 	ErrFileDontRead = errors.New("env: file don`t read")
 )
 
-var regexpVarPath = regexp.MustCompile(`\$\{([A-Z_]+)\}`)
+var regexpVarPath = regexp.MustCompile(`\$\{([0-9A-Z_]+)\}`)
 
 type Env map[string]string
 

@@ -90,7 +90,7 @@ func (self *Router) Group(prefix string) *group {
 	return g
 }
 
-func (self *Router) Complete() *Multiplexer {
+func (self *Router) Handler() http.Handler {
 	for method, routes := range self.routes {
 		for _, route := range routes {
 

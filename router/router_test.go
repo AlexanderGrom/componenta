@@ -14,7 +14,7 @@ func TestCheck(t *testing.T) {
 		return 200, nil
 	})
 
-	mux := r.Complete()
+	mux := r.Handler()
 
 	req, err := http.NewRequest("GET", "/test/check", nil)
 	if err != nil {
@@ -47,7 +47,7 @@ func TestContext(t *testing.T) {
 		return 200, nil
 	})
 
-	mux := r.Complete()
+	mux := r.Handler()
 
 	req, err := http.NewRequest("GET", "/", nil)
 	if err != nil {
@@ -95,7 +95,7 @@ func TestMiddleware(t *testing.T) {
 		next()
 	})
 
-	mux := r.Complete()
+	mux := r.Handler()
 
 	req, err := http.NewRequest("GET", "/news", nil)
 	if err != nil {
@@ -126,7 +126,7 @@ func TestGroup(t *testing.T) {
 		})
 	}
 
-	mux := r.Complete()
+	mux := r.Handler()
 
 	req, err := http.NewRequest("GET", "/group/path", nil)
 	if err != nil {
@@ -155,7 +155,7 @@ func TestCookies(t *testing.T) {
 		return 200, nil
 	})
 
-	mux := r.Complete()
+	mux := r.Handler()
 
 	req, err := http.NewRequest("GET", "/path", nil)
 	if err != nil {

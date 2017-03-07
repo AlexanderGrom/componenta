@@ -3,7 +3,7 @@ package router
 type Next func()
 
 // Интерфес для Middleware и Handler
-// Эти функции будут вызываться используя метож apply
+// Эти функции будут вызываться используя метод apply
 type appliable interface {
 	apply(ctx *Ctx, fns []appliable, current int)
 }

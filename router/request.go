@@ -5,9 +5,7 @@ import (
 	"net/http"
 )
 
-//
 // Обертка над http.Request
-//
 type Request struct {
 	*http.Request
 	Cookies *CookieReader

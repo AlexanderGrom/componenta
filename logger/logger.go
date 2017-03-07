@@ -15,10 +15,12 @@
 package logger
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sync"
 	"time"
 )
@@ -30,6 +32,7 @@ const (
 )
 
 var _ io.WriteCloser = (*Logger)(nil)
+var regexpVarPath = regexp.MustCompile(`\$\{([0-9A-Z_]+)\}`)
 
 type Logger struct {
 	Filename string
@@ -45,6 +48,7 @@ func (l *Logger) Write(p []byte) (int, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
+	p = append(bytes.TrimSpace(p), byte('\n'))
 	writeLen := int64(len(p))
 	if writeLen > l.max() {
 		return 0, fmt.Errorf("logger: write length %d bytes exceeds maximum file size %d bytes", writeLen, l.max())
@@ -151,7 +155,9 @@ func (l *Logger) rotate() error {
 }
 
 func (l *Logger) filename() string {
-	return l.Filename
+	return regexpVarPath.ReplaceAllStringFunc(l.Filename, func(str string) string {
+		return os.Getenv(str[2 : len(str)-1])
+	})
 }
 
 func backupName(name string) string {

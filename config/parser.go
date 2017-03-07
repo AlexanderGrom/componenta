@@ -122,6 +122,8 @@ func (self *parser) isKey(char rune) bool {
 // Символы из которых может состоять имя переменной
 func (self *parser) isVar(char rune) bool {
 	switch {
+	case char >= '0' && char <= '9':
+		return true
 	case char >= 'A' && char <= 'Z':
 		return true
 	case char == '_':
