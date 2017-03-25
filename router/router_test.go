@@ -9,9 +9,9 @@ import (
 
 func TestCheck(t *testing.T) {
 	r := New()
-	r.Get("/test/:name", func(ctx *Ctx) (int, error) {
+	r.Get("/test/:name", func(ctx *Ctx) int {
 		ctx.Res.Text(ctx.Req.Params.Get("name"))
-		return 200, nil
+		return 200
 	})
 
 	mux := r.Handler()
@@ -37,14 +37,14 @@ func TestCheck(t *testing.T) {
 
 func TestContext(t *testing.T) {
 	r := New()
-	r.Get("/", func(ctx *Ctx) (int, error) {
+	r.Get("/", func(ctx *Ctx) int {
 		token := ctx.Req.Context().Value("app.auth.token")
 		user := ctx.Req.Context().Value("app.auth.user")
 		if token != "123456" || user != "Alexander" {
-			return 401, nil
+			return 401
 		}
 		ctx.Res.Text("main")
-		return 200, nil
+		return 200
 	})
 
 	mux := r.Handler()
@@ -81,16 +81,21 @@ func TestMiddleware(t *testing.T) {
 		next()
 	})
 
-	r.Get("/news", func(ctx *Ctx) (int, error) {
+	r.Get("/news", func(ctx *Ctx) int {
 		global := ctx.Req.Context().Value("global")
-		route := ctx.Req.Context().Value("route")
-		if global != true || route != true {
-			return 400, nil
+		route1 := ctx.Req.Context().Value("route1")
+		route2 := ctx.Req.Context().Value("route2")
+		if global != true || route1 != true || route2 != true {
+			return 400
 		}
 		ctx.Res.Text("news")
-		return 200, nil
+		return 200
 	}).Use(func(ctx *Ctx, next Next) {
-		cxt := context.WithValue(ctx.Req.Context(), "route", true)
+		cxt := context.WithValue(ctx.Req.Context(), "route1", true)
+		ctx.Req.WithContext(cxt)
+		next()
+	}).Use(func(ctx *Ctx, next Next) {
+		cxt := context.WithValue(ctx.Req.Context(), "route2", true)
 		ctx.Req.WithContext(cxt)
 		next()
 	})
@@ -120,9 +125,9 @@ func TestGroup(t *testing.T) {
 	r := New()
 	g := r.Group("/group")
 	{
-		g.Get("/path", func(ctx *Ctx) (int, error) {
+		g.Get("/path", func(ctx *Ctx) int {
 			ctx.Res.Text("group/path")
-			return 200, nil
+			return 200
 		})
 	}
 
@@ -149,10 +154,10 @@ func TestGroup(t *testing.T) {
 
 func TestCookies(t *testing.T) {
 	r := New()
-	r.Get("/path", func(ctx *Ctx) (int, error) {
+	r.Get("/path", func(ctx *Ctx) int {
 		ctx.Res.Cookies.Set("userid", "1", 100500)
 		ctx.Res.Text("path")
-		return 200, nil
+		return 200
 	})
 
 	mux := r.Handler()

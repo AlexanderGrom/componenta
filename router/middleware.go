@@ -8,21 +8,22 @@ type appliable interface {
 	apply(ctx *Ctx, fns []appliable, current int)
 }
 
-type interceptor struct {
+type Interceptor struct {
 	middlewares []appliable
 }
 
-func NewInterceptor() *interceptor {
-	return &interceptor{}
+func NewInterceptor() *Interceptor {
+	return &Interceptor{}
 }
 
 // Добавляет middleware
-func (self *interceptor) Use(fns ...Middleware) {
+func (self *Interceptor) Use(fns ...Middleware) *Interceptor {
 	a := make([]appliable, len(fns))
 	for i, fn := range fns {
 		a[i] = fn
 	}
 	self.middlewares = append(self.middlewares, a...)
+	return self
 }
 
 func compose(fns []appliable) func(*Ctx) {

@@ -19,17 +19,10 @@ var (
 
 var regexpPlaceholder = regexp.MustCompile(`:([\w]+)`)
 
-type Handler func(*Ctx) (int, error)
+type Handler func(*Ctx) int
 
 func (self Handler) apply(ctx *Ctx, fns []appliable, index int) {
-	status, err := self(ctx)
-
-	if err != nil {
-		ctx.Res.Status = http.StatusInternalServerError
-	} else {
-		ctx.Res.Status = status
-	}
-
+	ctx.Res.Status = self(ctx)
 	index++
 	if len(fns) > index {
 		fns[index].apply(ctx, fns, index)
@@ -37,7 +30,7 @@ func (self Handler) apply(ctx *Ctx, fns []appliable, index int) {
 }
 
 type Route struct {
-	*interceptor
+	*Interceptor
 	Method  string
 	Pattern string
 	Handler Handler
@@ -50,7 +43,7 @@ func NewRoute(method string, pattern string, handler Handler) *Route {
 	pattern = regexpPlaceholder.ReplaceAllString(pattern, `(?P<$1>[0-9A-Za-z\-]+)`)
 	rexp := regexp.MustCompile(pattern)
 	return &Route{
-		interceptor: NewInterceptor(),
+		Interceptor: NewInterceptor(),
 		Method:      method,
 		Pattern:     pattern,
 		Handler:     handler,
@@ -70,28 +63,28 @@ func NewRoutes() Routes {
 }
 
 type Router struct {
-	*interceptor
-	*group
-	mux    *Multiplexer
-	groups []*group
+	*Interceptor
+	*Grouper
+	Mux    *Multiplexer
+	groups []*Grouper
 }
 
 func New() *Router {
 	return &Router{
-		interceptor: NewInterceptor(),
-		group:       NewGroup(""),
-		mux:         NewMultiplexer(),
+		Interceptor: NewInterceptor(),
+		Grouper:     NewGrouper(""),
+		Mux:         NewMultiplexer(),
 	}
 }
 
-func (self *Router) Group(prefix string) *group {
-	g := NewGroup(prefix)
+func (self *Router) Group(prefix string) *Grouper {
+	g := NewGrouper(prefix)
 	self.groups = append(self.groups, g)
 	return g
 }
 
 func (self *Router) Handler() http.Handler {
-	for method, routes := range self.routes {
+	for method, routes := range self.Routes {
 		for _, route := range routes {
 
 			route.FnChain = compose(merge(
@@ -100,12 +93,12 @@ func (self *Router) Handler() http.Handler {
 				[]appliable{route.Handler},
 			))
 
-			self.mux.routes[method] = append(self.mux.routes[method], route)
+			self.Mux.routes[method] = append(self.Mux.routes[method], route)
 		}
 	}
 
 	for _, group := range self.groups {
-		for method, routes := range group.routes {
+		for method, routes := range group.Routes {
 			for _, route := range routes {
 
 				route.FnChain = compose(merge(
@@ -115,46 +108,46 @@ func (self *Router) Handler() http.Handler {
 					[]appliable{route.Handler},
 				))
 
-				self.mux.routes[method] = append(self.mux.routes[method], route)
+				self.Mux.routes[method] = append(self.Mux.routes[method], route)
 			}
 		}
 	}
 
-	return self.mux
+	return self.Mux
 }
 
-type group struct {
-	*interceptor
-	routes Routes
+type Grouper struct {
+	*Interceptor
+	Routes Routes
 	prefix string
 }
 
-func NewGroup(prefix string) *group {
-	return &group{
-		interceptor: NewInterceptor(),
-		routes:      NewRoutes(),
+func NewGrouper(prefix string) *Grouper {
+	return &Grouper{
+		Interceptor: NewInterceptor(),
+		Routes:      NewRoutes(),
 		prefix:      prefix,
 	}
 }
 
-func (self *group) Get(pattern string, fn Handler) *Route {
+func (self *Grouper) Get(pattern string, fn Handler) *Route {
 	return self.registr(GET, pattern, fn)
 }
 
-func (self *group) Post(pattern string, fn Handler) *Route {
+func (self *Grouper) Post(pattern string, fn Handler) *Route {
 	return self.registr(POST, pattern, fn)
 }
 
-func (self *group) Put(pattern string, fn Handler) *Route {
+func (self *Grouper) Put(pattern string, fn Handler) *Route {
 	return self.registr(PUT, pattern, fn)
 }
 
-func (self *group) Delete(pattern string, fn Handler) *Route {
+func (self *Grouper) Delete(pattern string, fn Handler) *Route {
 	return self.registr(DELETE, pattern, fn)
 }
 
-func (self *group) registr(method string, pattern string, fn Handler) *Route {
+func (self *Grouper) registr(method string, pattern string, fn Handler) *Route {
 	r := NewRoute(method, self.prefix+pattern, fn)
-	self.routes[method] = append(self.routes[method], r)
+	self.Routes[method] = append(self.Routes[method], r)
 	return r
 }
