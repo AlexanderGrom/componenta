@@ -37,6 +37,19 @@ func (self *Chunker) Chunk(n int, f ChunkFunk) error {
 		return errors.New("sqlx: two parameter must be func([]Struct)")
 	}
 
+	numOut := funcType.NumOut()
+
+	if numOut > 1 {
+		return errors.New("sqlx: return must be bool")
+	}
+
+	if numOut == 1 {
+		outType := funcType.Out(0)
+		if outType.Kind() != reflect.Bool {
+			return errors.New("sqlx: return must be bool")
+		}
+	}
+
 	columns, err := self.rows.Columns()
 
 	if err != nil {
@@ -68,6 +81,7 @@ func (self *Chunker) Chunk(n int, f ChunkFunk) error {
 	}
 
 	var found bool = false
+	var interrupt bool = false
 	var i int = 1
 	for self.rows.Next() {
 		structValuePrt := reflect.New(sliceElem)
@@ -96,10 +110,14 @@ func (self *Chunker) Chunk(n int, f ChunkFunk) error {
 		sliceValue.Set(reflect.Append(sliceValue, structValue))
 
 		if i == n {
-			funcValue.Call([]reflect.Value{sliceValue})
+			out := funcValue.Call([]reflect.Value{sliceValue})
 			sliceValue = reflect.Indirect(reflect.New(sliceType))
 			found = true
 			i = 1
+			if len(out) > 0 && !out[0].Bool() {
+				interrupt = true
+				break
+			}
 			continue
 		}
 
@@ -107,7 +125,7 @@ func (self *Chunker) Chunk(n int, f ChunkFunk) error {
 		found = true
 	}
 
-	if sliceValue.Len() > 0 {
+	if !interrupt && sliceValue.Len() > 0 {
 		funcValue.Call([]reflect.Value{sliceValue})
 	}
 
