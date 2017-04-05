@@ -21,19 +21,19 @@ func main() {
         log.Fatalln("DB Connecting:", err)
     }
 
-	sqlx.Driver("postgres")
+    sqlx.Driver("postgres")
 
-	// SELECT "id", "name" FROM "users" WHERE "age" > $1 ORDER BY "created_at" DESC LIMIT $2;
-	query := sqlx.Table("users").
+    // SELECT "id", "name" FROM "users" WHERE "age" > $1 ORDER BY "created_at" DESC LIMIT $2;
+    query := sqlx.Table("users").
         Select("id", "name").
-		Where("age", ">", 21).
-		OrderBy("created_at", "DESC").
-		Limit(10)
+        Where("age", ">", 21).
+        OrderBy("created_at", "DESC").
+        Limit(10)
 
     rows, err := db.Query(query.Sql(), query.Data()...)
 
-	// ...
-	// ...
+    // ...
+    // ...
 
     db.Close()
 }
@@ -260,9 +260,9 @@ sql := sqlx.Table("users").
 // SELECT * FROM "users" as "us" INNER JOIN "info" as "inf" ON ("us"."id" = "inf"."user_id" AND "us"."group" = $1)
 sql := sqlx.Table("users as us").
     Join("info as inf", func(joiner *Joiner) {
-		joiner.On("us.id", "=", "inf.user_id")
-		joiner.Where("us.group", "=", "admin")
-	}).Sql()
+        joiner.On("us.id", "=", "inf.user_id")
+        joiner.Where("us.group", "=", "admin")
+    }).Sql()
 ```
 
 **Объединение (Left Join)**
@@ -270,8 +270,8 @@ sql := sqlx.Table("users as us").
 // SELECT * FROM "users" as "us" LEFT JOIN "orders" as "ord" ON ("us"."id" = "ord"."user_id") WHERE "ord"."user_id" IS NOT NULL
 sql := sqlx.Table("users as us").
     LeftJoin("orders as ord", func(joiner *Joiner) {
-		joiner.On("us.id", "=", "ord.user_id")
-	}).
+        joiner.On("us.id", "=", "ord.user_id")
+    }).
     WhereNotNull("ord.user_id").
     Sql()
 ```
@@ -347,22 +347,22 @@ func main() {
     }
 
     sqlx.Driver("mysql")
-	dbx := sqlx.DataBase(db)
+    dbx := sqlx.DataBase(db)
 
     var users []User
 
     query := sqlx.Table("users").OrderBy("id", "asc").Limit(10)
-	err = dbx.Query(query).Scan(&users)
+    err = dbx.Query(query).Scan(&users)
 
     if err != nil {
         log.Fatalln("DB Query:", err)
     }
 
     for _, user := range users {
-		fmt.Printf("%d, %s\n", user.Id, user.Name)
-	}
+        fmt.Printf("%d, %s\n", user.Id, user.Name)
+    }
 
-	db.Close()
+    db.Close()
 }
 ```
 
@@ -394,20 +394,20 @@ func main() {
     }
 
     sqlx.Driver("mysql")
-	dbx := sqlx.DataBase(db)
+    dbx := sqlx.DataBase(db)
 
     var user User
 
     query := sqlx.Table("users").Where("id", "=", 2).Limit(1)
-	err = dbx.Query(query).Scan(&user)
+    err = dbx.Query(query).Scan(&user)
 
     if err != nil {
         log.Fatalln("DB Query:", err)
     }
 
-	fmt.Printf("%d, %s\n", user.Id, user.Name)
+    fmt.Printf("%d, %s\n", user.Id, user.Name)
 
-	db.Close()
+    db.Close()
 }
 ```
 
@@ -434,21 +434,21 @@ func main() {
     }
 
     sqlx.Driver("mysql")
-	dbx := sqlx.DataBase(db)
+    dbx := sqlx.DataBase(db)
 
     var id int
     var name string
 
     query := sqlx.Table("users").Select("id", "name").Where("id", "=", 2).Limit(1)
-	err = dbx.Query(query).Scan(&id, &name)
+    err = dbx.Query(query).Scan(&id, &name)
 
     if err != nil {
         log.Fatalln("DB Query:", err)
     }
 
-	fmt.Printf("%d, %s\n", id, name)
+    fmt.Printf("%d, %s\n", id, name)
 
-	db.Close()
+    db.Close()
 }
 ```
 
@@ -484,15 +484,15 @@ func main() {
     defer db.Close()
 
     sqlx.Driver("mysql")
-	dbx := sqlx.DataBase(db)
+    dbx := sqlx.DataBase(db)
 
     query := sqlx.Table("users").OrderBy("id", "asc")
 
     err = dbx.Query(query).Chunk(100, func(users []User) {
-		for _, user := range users {
-			fmt.Printf("%d, %s\n", user.Id, user.Name)
-		}
-	})
+        for _, user := range users {
+            fmt.Printf("%d, %s\n", user.Id, user.Name)
+        }
+    })
 
     if err != nil {
         log.Fatalln("DB Query:", err)
