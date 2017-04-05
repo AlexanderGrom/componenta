@@ -37,14 +37,7 @@ type fromComponent struct {
 	builder *Builder
 }
 
-type joinComponent struct {
-	kind     string
-	table    string
-	column1  string
-	operator string
-	column2  string
-}
-
+type joinComponent Joiner
 type valueComponent []interface{}
 type setComponent Data
 

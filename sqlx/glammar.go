@@ -144,11 +144,25 @@ func (self *baseGlammar) compileJoin(b *Builder) string {
 	if len(b.components.Join) == 0 {
 		return ""
 	}
-	buff := make([]string, len(b.components.Join))
-	for k, v := range b.components.Join {
-		buff[k] = combine(v.kind, "JOIN", self.glammar.wrap(v.table), "ON (", self.glammar.wrap(v.column1), v.operator, self.glammar.wrap(v.column2), ")")
+
+	buff1 := make([]string, len(b.components.Join))
+	for i, join := range b.components.Join {
+		buff2 := make([]string, len(join.conditions))
+		for j, v := range join.conditions {
+			var result string
+			switch v.kind {
+			case "on":
+				result = combine(self.glammar.wrap(v.column), v.operator, self.glammar.wrap(v.value))
+			case "where":
+				result = combine(self.glammar.wrap(v.column), v.operator, self.glammar.parameter(v.value))
+			}
+			buff2[j] = combine(v.boolean, result)
+		}
+
+		buff1[i] = combine(join.kind, "JOIN", self.glammar.wrap(join.table), "ON (", strings.Join(buff2, " "), ")")
 	}
-	return strings.Join(buff, " ")
+
+	return strings.Join(buff1, " ")
 }
 
 // Компиляция WHERE

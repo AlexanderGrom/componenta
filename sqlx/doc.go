@@ -8,7 +8,7 @@ package sqlx
 // Insert(...sqlx.Data) *Builder
 // Delete() *Builder
 // From(table interface{}) *Builder
-// Join(table, column1, operator, column2 string) *Builder
+// Join(table, joiner func(*Joiner)) *Builder
 // LeftJoin(table, column1, operator, column2 string) *Builder
 // Where(column string, operator string, value interface{}) *Builder
 // WhereRaw(exp string, bindings ...interface{}) *Builder
@@ -112,11 +112,16 @@ package sqlx
 // SELECT * FROM `users` WHERE `address` IS NULL;
 // query := sqlx.Table("users").WhereNull("address").Select("*")
 //
-// SELECT * FROM `users` as `us` INNER JOIN `info` as `inf` ON (`inf`.`id` = `us`.`users_id`);
-// query := sqlx.Table("users as us").Join("info as inf", "inf.id", "=", "us.users_id").Select("*")
+// SELECT * FROM `users` as `us` INNER JOIN `info` as `inf` ON (`inf`.`id` = `us`.`users_id` AND `us`.`group` = $1);
+// query := Table("users as us").Join("info as inf", func(joiner *Joiner) {
+//     joiner.On("us.id", "=", "inf.user_id")
+//     joiner.Where("us.group", "=", "admin")
+// }).Select("*").Sql()
 //
 // SELECT * FROM `users` as `us` LEFT JOIN `info` as `inf` ON (`us`.`id` = `inf`.`users_id`);
-// query := sqlx.Table("users as us").LeftJoin("info as inf", "us.id", "=", "inf.users_id").Select("*")
+// query := sqlx.Table("users as us").LeftJoin("orders as ord", func(joiner *Joiner) {
+//     joiner.On("us.id", "=", "ord.user_id")
+// }).Select("*")
 //
 // SELECT * FROM `users` LIMIT ? OFFSET ?;
 // query := sqlx.Table("users").Limit(10).Offset(50).Select("*")

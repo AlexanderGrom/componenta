@@ -291,8 +291,13 @@ func TestSqlLimit(t *testing.T) {
 }
 
 func TestSqlJoin(t *testing.T) {
-	expect := `SELECT * FROM "users" as "us" INNER JOIN "info" as "inf" ON ( "us"."id" = "inf"."user_id" ) WHERE "city" = $1`
-	result := Table("users as us").Join("info as inf", "us.id", "=", "inf.user_id").Where("city", "=", "Moscow").Sql()
+	expect := `SELECT * FROM "users" as "us" INNER JOIN "info" as "inf" ON ( "us"."id" = "inf"."user_id" AND "us"."group" = $1 ) INNER JOIN "city" as "c" ON ( "c"."id" = "inf"."city_id" )`
+	result := Table("users as us").Join("info as inf", func(joiner *Joiner) {
+		joiner.On("us.id", "=", "inf.user_id")
+		joiner.Where("us.group", "=", "admin")
+	}).Join("city as c", func(joiner *Joiner) {
+		joiner.On("c.id", "=", "inf.city_id")
+	}).Sql()
 	if result != expect {
 		t.Errorf("Expect result to equal in func TestSqlJoin.\nResult: %s\nExpect: %s", result, expect)
 	}
@@ -300,7 +305,9 @@ func TestSqlJoin(t *testing.T) {
 
 func TestSqlLeftJoin(t *testing.T) {
 	expect := `SELECT * FROM "users" as "us" LEFT JOIN "orders" as "ord" ON ( "us"."id" = "ord"."user_id" ) WHERE "ord"."user_id" IS NOT NULL`
-	result := Table("users as us").LeftJoin("orders as ord", "us.id", "=", "ord.user_id").WhereNotNull("ord.user_id").Sql()
+	result := Table("users as us").LeftJoin("orders as ord", func(joiner *Joiner) {
+		joiner.On("us.id", "=", "ord.user_id")
+	}).WhereNotNull("ord.user_id").Sql()
 	if result != expect {
 		t.Errorf("Expect result to equal in func TestSqlLeftJoin.\nResult: %s\nExpect: %s", result, expect)
 	}

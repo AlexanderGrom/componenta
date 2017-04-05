@@ -174,6 +174,17 @@ func TestDataLimit(t *testing.T) {
 	}
 }
 
+func TestDataJoin(t *testing.T) {
+	expect := []interface{}{"admin", 1000, 10}
+	result := Table("users as us").Join("info as inf", func(joiner *Joiner) {
+		joiner.On("us.id", "=", "inf.user_id")
+		joiner.Where("us.group", "=", "admin")
+	}).Where("us.id", ">", 1000).Limit(10).Data()
+	if !DataEqual(result, expect) {
+		t.Errorf("Expect result to equal in func TestDataJoin.\nResult: %v\nExpect: %v", result, expect)
+	}
+}
+
 func TestDataUpdate(t *testing.T) {
 	expect := []interface{}{"Moscow", "Jack", 15}
 	result := Table("users").Where("id", "=", 15).Update(Data{"name": "Jack", "city": "Moscow"}).Data()

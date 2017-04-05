@@ -45,11 +45,11 @@ func registerDriver(name string, constructor glammarFunc) {
 }
 
 // Kарта значений для плейсехолдеров
-var bindings = []string{"values", "set", "select", "from", "where", "having", "limit", "offset"}
+var bindings = []string{"values", "set", "select", "from", "join", "where", "having", "limit", "offset"}
 
 // Карта значений для плейсехолдеров в зависимости от типа запроса
 var bindingsMap = map[string][]string{
-	"select": []string{"select", "from", "where", "group", "having", "limit", "offset"},
+	"select": []string{"select", "from", "join", "where", "group", "having", "limit", "offset"},
 	"insert": []string{"values"},
 	"update": []string{"set", "where"},
 	"delete": []string{"where"},
@@ -152,24 +152,23 @@ func (self *Builder) fromExp(exp Expression) {
 	self.bind("from", exp)
 }
 
-func (self *Builder) Join(table, column1, operator, column2 string) *Builder {
-	self.join(table, column1, operator, column2, "INNER")
+func (self *Builder) Join(table string, callback func(*Joiner)) *Builder {
+	self.join(table, callback, "INNER")
 	return self
 }
 
-func (self *Builder) LeftJoin(table, column1, operator, column2 string) *Builder {
-	self.join(table, column1, operator, column2, "LEFT")
+func (self *Builder) LeftJoin(table string, callback func(*Joiner)) *Builder {
+	self.join(table, callback, "LEFT")
 	return self
 }
 
-func (self *Builder) join(table, column1, operator, column2, kind string) {
-	self.components.Join = append(self.components.Join, joinComponent{
-		kind:     kind,
-		table:    table,
-		column1:  column1,
-		operator: operator,
-		column2:  column2,
-	})
+func (self *Builder) join(table string, callback func(*Joiner), kind string) {
+	joiner := newJoiner(table, kind)
+	callback(joiner)
+	if len(joiner.conditions) > 0 {
+		self.components.Join = append(self.components.Join, joinComponent(*joiner))
+		self.bind("join", joiner.bindings...)
+	}
 }
 
 func (self *Builder) Where(column string, operator string, value interface{}) *Builder {

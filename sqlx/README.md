@@ -257,18 +257,21 @@ sql := sqlx.Table("users").
 
 **Объединение (Join)**
 ```go
-// SELECT * FROM "users" as "us" INNER JOIN "info" as "inf" ON ("us"."id" = "inf"."user_id") WHERE "inf"."city" = $1
+// SELECT * FROM "users" as "us" INNER JOIN "info" as "inf" ON ("us"."id" = "inf"."user_id" AND "us"."group" = $1)
 sql := sqlx.Table("users as us").
-    Join("info as inf", "us.id", "=", "inf.user_id").
-    Where("inf.city", "=", "Moscow").
-    Sql()
+    Join("info as inf", func(joiner *Joiner) {
+		joiner.On("us.id", "=", "inf.user_id")
+		joiner.Where("us.group", "=", "admin")
+	}).Sql()
 ```
 
 **Объединение (Left Join)**
 ```go
 // SELECT * FROM "users" as "us" LEFT JOIN "orders" as "ord" ON ("us"."id" = "ord"."user_id") WHERE "ord"."user_id" IS NOT NULL
 sql := sqlx.Table("users as us").
-    LeftJoin("orders as ord", "us.id", "=", "ord.user_id").
+    LeftJoin("orders as ord", func(joiner *Joiner) {
+		joiner.On("us.id", "=", "ord.user_id")
+	}).
     WhereNotNull("ord.user_id").
     Sql()
 ```
@@ -395,7 +398,7 @@ func main() {
 
     var user User
 
-    query := sqlx.Table("users").Where("id", "=", 2).Limit(11)
+    query := sqlx.Table("users").Where("id", "=", 2).Limit(1)
 	err = dbx.Query(query).Scan(&user)
 
     if err != nil {
@@ -436,7 +439,7 @@ func main() {
     var id int
     var name string
 
-    query := sqlx.Table("users").Select("id", "name").Where("id", "=", 2).Limit(11)
+    query := sqlx.Table("users").Select("id", "name").Where("id", "=", 2).Limit(1)
 	err = dbx.Query(query).Scan(&id, &name)
 
     if err != nil {
