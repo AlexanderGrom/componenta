@@ -1,8 +1,8 @@
 
-## Componenta / Sqlx
+## Componenta / Sqlx - (SQL-query builder for golang)
 
-Мини пакет конструктора запросов.  
-Пакет поддерживает СУБД PostgreSql, MySql и Sqlite
+Simple SQL-query builder for golang. 
+The package supports: PostgreSql, MySql and Sqlite
 
 ```go
 package main
