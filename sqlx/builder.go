@@ -566,9 +566,7 @@ func (self *Builder) Insert(data ...Data) *Builder {
 }
 
 func (self *Builder) ReturnId() *Builder {
-	if self.kind == "insert" {
-		self.enableReturnId = true
-	}
+	self.components.ReturnId = []interface{}{true}
 	return self
 }
 

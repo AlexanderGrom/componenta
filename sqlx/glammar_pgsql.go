@@ -57,8 +57,9 @@ func (self *pgsqlGlammar) prepareRaw(p interface{}) string {
 
 // Вставка Insert Returning id
 func (self *pgsqlGlammar) compileReturning(b *Builder) string {
-	if !b.enableReturnId {
+	if len(b.components.ReturnId) == 0 {
 		return ""
 	}
+	b.enableReturnId = true
 	return "RETURNING " + self.wrap("id")
 }
