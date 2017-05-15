@@ -134,7 +134,7 @@ func (self *Chunker) Chunk(n int, f ChunkFunk) error {
 	}
 
 	if !found {
-		return sql.ErrNoRows
+		return ErrNoRows
 	}
 
 	if err := self.rows.Close(); err != nil {
