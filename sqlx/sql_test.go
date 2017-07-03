@@ -5,7 +5,7 @@ import (
 )
 
 // Устанавливаем драйвер для всех тестов
-func TestSqlDriver(t *testing.T) {
+func init() {
 	Driver("postgres")
 }
 
@@ -350,5 +350,31 @@ func TestSqlInsert3(t *testing.T) {
 	result := Table("users").Insert(Data{"id": 1, "name": "Jack"}).Insert(Data{"id": 2, "name": "Mike"}).Sql()
 	if result != expect {
 		t.Errorf("Expect result to equal in func TestSqlInsert3.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestSqlInsert4(t *testing.T) {
+	expect := `INSERT INTO "users" ( "id", "name" ) VALUES ( $1, $2 ), ( $3, $4 ) ON CONFLICT DO NOTHING`
+	result := Table("users").Insert(Data{"id": 1, "name": "Jack"}).Insert(Data{"id": 2, "name": "Mike"}).OrIgnore().Sql()
+	if result != expect {
+		t.Errorf("Expect result to equal in func TestSqlInsert4.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestSqlInsert5(t *testing.T) {
+	Driver("mysql")
+	expect := "INSERT IGNORE INTO `users` ( `id`, `name` ) VALUES ( ?, ? ), ( ?, ? )"
+	result := Table("users").Insert(Data{"id": 1, "name": "Jack"}).Insert(Data{"id": 2, "name": "Mike"}).OrIgnore().Sql()
+	if result != expect {
+		t.Errorf("Expect result to equal in func TestSqlInsert5.\nResult: %s\nExpect: %s", result, expect)
+	}
+	Driver("postgres")
+}
+
+func TestSqlInsert6(t *testing.T) {
+	expect := `INSERT INTO "users" ( "id", "name" ) VALUES ( $1, $2 ) ON CONFLICT DO NOTHING RETURNING "id"`
+	result := Table("users").Insert(Data{"id": 1, "name": "Jack"}).OrIgnore().ReturnId().Sql()
+	if result != expect {
+		t.Errorf("Expect result to equal in func TestSqlInsert6.\nResult: %s\nExpect: %s", result, expect)
 	}
 }

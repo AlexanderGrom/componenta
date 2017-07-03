@@ -15,3 +15,11 @@ func newSqliteGlammar() glammar {
 	g.baseGlammar.glammar = g
 	return g
 }
+
+// Вставка Insert OR IGNORE
+func (self *sqliteGlammar) compileOrIgnore(b *Builder) string {
+	if len(b.components.OrIgnore) == 0 {
+		return ""
+	}
+	return "OR IGNORE"
+}

@@ -63,3 +63,11 @@ func (self *pgsqlGlammar) compileReturning(b *Builder) string {
 	b.enableReturnId = true
 	return "RETURNING " + self.wrap("id")
 }
+
+// Вставка Insert ON CONFLICT DO NOTHING
+func (self *pgsqlGlammar) compileOnConflictDoNothing(b *Builder) string {
+	if len(b.components.OrIgnore) == 0 {
+		return ""
+	}
+	return "ON CONFLICT DO NOTHING"
+}

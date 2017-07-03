@@ -33,6 +33,8 @@ type glammar interface {
 	compileInto(*Builder) string
 	compileColumns(*Builder) string
 	compileValues(*Builder) string
+	compileOrIgnore(*Builder) string
+	compileOnConflictDoNothing(*Builder) string
 	compileReturning(*Builder) string
 }
 
@@ -78,9 +80,11 @@ func (self *baseGlammar) combineUpdate(b *Builder) string {
 func (self *baseGlammar) combineInsert(b *Builder) string {
 	return combine(
 		self.glammar.compileInsert(b),
+		self.glammar.compileOrIgnore(b),
 		self.glammar.compileInto(b),
 		self.glammar.compileColumns(b),
 		self.glammar.compileValues(b),
+		self.glammar.compileOnConflictDoNothing(b),
 		self.glammar.compileReturning(b),
 	)
 }
@@ -369,7 +373,17 @@ func (self *baseGlammar) compileValues(b *Builder) string {
 	return "VALUES " + strings.Join(buff, ", ")
 }
 
-// Вставка Insert Returning id (заглушка)
+// Вставка для Insert OR IGNORE
+func (self *baseGlammar) compileOrIgnore(b *Builder) string {
+	return ""
+}
+
+// Заглушка для Insert ON CONFLICT DO NOTHING
+func (self *baseGlammar) compileOnConflictDoNothing(b *Builder) string {
+	return ""
+}
+
+// Заглушка для Insert Returning id
 func (self *baseGlammar) compileReturning(b *Builder) string {
 	return ""
 }

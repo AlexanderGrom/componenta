@@ -12,6 +12,7 @@ type components struct {
 	Into      []interface{}
 	Columns   []interface{}
 	Values    []valueComponent
+	OrIgnore  []interface{}
 	ReturnId  []interface{}
 	Set       []setComponent
 	Where     []whereComponent

@@ -1,7 +1,7 @@
 
 ## Componenta / Sqlx - (SQL-query builder for golang)
 
-Simple SQL-query builder for golang. 
+Simple SQL-query builder for golang.
 The package supports: PostgreSql, MySql and Sqlite
 
 ```go
@@ -316,6 +316,25 @@ sql := sqlx.Table("users").
 sql := sqlx.Table("users").
     Insert(sqlx.Data{"id": 1, "name": "Jack"}).
     Insert(sqlx.Data{"id": 2, "name": "Mike"}).
+    Sql()
+```
+
+**Вставка Insert + Returning id**
+```go
+// [Postrges Only]
+// INSERT INTO "users" ("id", "name") VALUES ($1, $2) Returning "id"
+sql := sqlx.Table("users").
+    Insert(sqlx.Data{"id": 1, "name": "Jack"}).
+    ReturnId()
+    Sql()
+```
+
+**Вставка Insert + Ignore**
+```go
+// INSERT INTO "users" ("id", "name") VALUES ($1, $2) ON CONFLICT DO NOTHING
+sql := sqlx.Table("users").
+    Insert(sqlx.Data{"id": 1, "name": "Jack"}).
+    OrIgnore()
     Sql()
 ```
 

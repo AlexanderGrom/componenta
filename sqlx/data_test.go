@@ -5,7 +5,7 @@ import (
 )
 
 // Устанавливаем драйвер для всех тестов
-func TestDataDriver(t *testing.T) {
+func init() {
 	Driver("postgres")
 }
 

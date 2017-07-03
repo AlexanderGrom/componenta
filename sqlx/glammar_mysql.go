@@ -15,3 +15,11 @@ func newMysqlGlammar() glammar {
 	g.baseGlammar.glammar = g
 	return g
 }
+
+// Вставка Insert IGNORE
+func (self *mysqlGlammar) compileOrIgnore(b *Builder) string {
+	if len(b.components.OrIgnore) == 0 {
+		return ""
+	}
+	return "IGNORE"
+}

@@ -565,6 +565,11 @@ func (self *Builder) Insert(data ...Data) *Builder {
 	return self
 }
 
+func (self *Builder) OrIgnore() *Builder {
+	self.components.OrIgnore = []interface{}{true}
+	return self
+}
+
 func (self *Builder) ReturnId() *Builder {
 	self.components.ReturnId = []interface{}{true}
 	return self
