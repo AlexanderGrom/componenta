@@ -4,6 +4,10 @@ import (
 	"database/sql"
 )
 
+type Querier interface {
+	Query(*Builder) *Query
+}
+
 type DataBaser interface {
 	Query(string, ...interface{}) (*sql.Rows, error)
 	Exec(string, ...interface{}) (sql.Result, error)
@@ -18,6 +22,10 @@ func DataBase(db *sql.DB) *DB {
 	return &DB{
 		db: db,
 	}
+}
+
+func (self *DB) Origin() *sql.DB {
+	return self.db
 }
 
 func (self *DB) Query(builder *Builder) *Query {
@@ -38,6 +46,10 @@ func (self *DB) Begin() (*Tx, error) {
 
 type Tx struct {
 	tx *sql.Tx
+}
+
+func (self *Tx) Origin() *sql.Tx {
+	return self.tx
 }
 
 func (self *Tx) Query(builder *Builder) *Query {
