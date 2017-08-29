@@ -38,28 +38,26 @@ func main() {
     })
 
     r.Use(func(ctx *router.Ctx, next router.Next) {
-		log.Println("Global Middleware")
-		next()
-	})
+        log.Println("Global Middleware")
+        next()
+    })
 
-	g := r.Group("/group")
-	g.Use(func(ctx *router.Ctx, next router.Next) {
-		log.Println("Group Middleware")
-		next()
-	})
-	{
-		g.Get("/path", func(ctx *router.Ctx) int {
-			ctx.Res.Text("Address: /group/path")
-			return 200
-		}).Use(func(ctx *router.Ctx, next router.Next) {
-			log.Println("Route Middleware")
-			next()
-		})
-	}
+    g := r.Group("/group")
+    g.Use(func(ctx *router.Ctx, next router.Next) {
+        log.Println("Group Middleware")
+        next()
+    })
+    {
+        g.Get("/path", func(ctx *router.Ctx) int {
+            ctx.Res.Text("Address: /group/path")
+            return 200
+        }).Use(func(ctx *router.Ctx, next router.Next) {
+            log.Println("Route Middleware")
+            next()
+        })
+    }
 
-    mux := r.Complete()
-
-    if err := http.ListenAndServe(":8080", mux); err != nil {
+    if err := http.ListenAndServe(":8080", r.Handler()); err != nil {
         log.Fatalln("ListenAndServe:", err)
     }
 }
