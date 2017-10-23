@@ -30,8 +30,17 @@ func (self *DB) Origin() *sql.DB {
 
 func (self *DB) Query(builder *Builder) *Query {
 	return &Query{
-		db:      self.db,
-		builder: builder,
+		db:    self.db,
+		query: builder.Sql(),
+		data:  builder.Data(),
+	}
+}
+
+func (self *DB) QueryRaw(query string, data ...interface{}) *Query {
+	return &Query{
+		db:    self.db,
+		query: query,
+		data:  data,
 	}
 }
 
@@ -54,8 +63,17 @@ func (self *Tx) Origin() *sql.Tx {
 
 func (self *Tx) Query(builder *Builder) *Query {
 	return &Query{
-		db:      self.tx,
-		builder: builder,
+		db:    self.tx,
+		query: builder.Sql(),
+		data:  builder.Data(),
+	}
+}
+
+func (self *Tx) QueryRaw(query string, data ...interface{}) *Query {
+	return &Query{
+		db:    self.tx,
+		query: query,
+		data:  data,
 	}
 }
 
@@ -75,76 +93,39 @@ type Result interface {
 }
 
 // Стандартный вариант Result предлагаемый драйвером к базе данных
-type driverResult struct {
+type customResult struct {
 	sql.Result
 }
 
 // Возвращает последний вставленный ID без проверки на поддержку драйвером
-func (self driverResult) LastInsertId() int64 {
-	id, _ := self.Result.LastInsertId()
-	return id
+func (self customResult) LastInsertId() int64 {
+	//id, _ := self.Result.LastInsertId()
+	//return id
+	return 0
 }
 
 // Возвращает кол-во затронутых строк последним запросом  без проверки на поддержку драйвером
-func (self driverResult) RowsAffected() int64 {
-	count, _ := self.Result.RowsAffected()
-	return count
-}
-
-// Пользовательский вариант Result, если драйвер к базы данных его не поддерживает
-type customResult struct {
-	lastId    int64
-	rowsCount int64
-}
-
-// Возвращает последний вставленный ID
-func (self customResult) LastInsertId() int64 {
-	return self.lastId
-}
-
-// Возвращает кол-во затронутых строк последним запросом
 func (self customResult) RowsAffected() int64 {
-	return self.rowsCount
+	//count, _ := self.Result.RowsAffected()
+	//return count
+	return 0
 }
 
 type Query struct {
-	db      DataBaser
-	builder *Builder
+	db    DataBaser
+	query string
+	data  []interface{}
 }
 
 // Выполнение запроса
 func (self *Query) Exec() (Result, error) {
-	if self.builder.enableReturnId {
-		rows, err := self.db.Query(self.builder.Sql(), self.builder.Data()...)
-		if err != nil {
-			return customResult{}, err
-		}
-
-		var id int64
-		var count int64
-		for rows.Next() {
-			if err := rows.Scan(&id); err != nil {
-				return customResult{}, err
-			}
-			count++
-		}
-
-		if err := rows.Err(); err != nil {
-			return customResult{}, err
-		}
-		if err := rows.Close(); err != nil {
-			return customResult{}, err
-		}
-
-		return customResult{id, count}, err
-	}
-	res, err := self.db.Exec(self.builder.Sql(), self.builder.Data()...)
-	return driverResult{res}, err
+	res, err := self.db.Exec(self.query, self.data...)
+	return customResult{res}, err
 }
 
 // Сканировать результаты
 func (self *Query) Scan(a ...interface{}) error {
-	rows, err := self.db.Query(self.builder.Sql(), self.builder.Data()...)
+	rows, err := self.db.Query(self.query, self.data...)
 	if err != nil {
 		return err
 	}
@@ -153,7 +134,7 @@ func (self *Query) Scan(a ...interface{}) error {
 
 // Сканировать в "чанки" и обрабатывать по кускам
 func (self *Query) Chunk(i int, f ChunkFunk) error {
-	rows, err := self.db.Query(self.builder.Sql(), self.builder.Data()...)
+	rows, err := self.db.Query(self.query, self.data...)
 	if err != nil {
 		return err
 	}

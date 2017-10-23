@@ -60,7 +60,6 @@ func (self *pgsqlGlammar) compileReturning(b *Builder) string {
 	if len(b.components.ReturnId) == 0 {
 		return ""
 	}
-	b.enableReturnId = true
 	return "RETURNING " + self.wrap("id")
 }
 

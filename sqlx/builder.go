@@ -65,11 +65,10 @@ func newBindings() map[string][]interface{} {
 }
 
 type Builder struct {
-	kind           string
-	table          string
-	enableReturnId bool
-	components     *components
-	bindings       map[string][]interface{}
+	kind       string
+	table      string
+	components *components
+	bindings   map[string][]interface{}
 }
 
 func NewBuilder() *Builder {

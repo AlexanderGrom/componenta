@@ -321,11 +321,27 @@ func TestSqlDelete(t *testing.T) {
 	}
 }
 
+func TestSqlDelete2(t *testing.T) {
+	expect := `DELETE FROM "users" WHERE "id" = $1 RETURNING "id"`
+	result := Table("users").Where("id", "=", 15).Delete().ReturnId().Sql()
+	if result != expect {
+		t.Errorf("Expect result to equal in func TestSqlDelete2.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
 func TestSqlUpdate(t *testing.T) {
 	expect := `UPDATE "users" SET "city" = $1, "name" = $2 WHERE "id" = $3`
 	result := Table("users").Where("id", "=", 15).Update(Data{"name": "Jack", "city": "Moscow"}).Sql()
 	if result != expect {
 		t.Errorf("Expect result to equal in func TestSqlUpdate.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
+func TestSqlUpdate2(t *testing.T) {
+	expect := `UPDATE "users" SET "city" = $1, "name" = $2 WHERE "id" = $3 RETURNING "id"`
+	result := Table("users").Where("id", "=", 15).Update(Data{"name": "Jack", "city": "Moscow"}).ReturnId().Sql()
+	if result != expect {
+		t.Errorf("Expect result to equal in func TestSqlUpdate2.\nResult: %s\nExpect: %s", result, expect)
 	}
 }
 

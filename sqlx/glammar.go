@@ -64,6 +64,7 @@ func (self *baseGlammar) combineDelete(b *Builder) string {
 		self.glammar.compileDelete(b),
 		self.glammar.compileFrom(b),
 		self.glammar.compileWhere(b),
+		self.glammar.compileReturning(b),
 	)
 }
 
@@ -73,6 +74,7 @@ func (self *baseGlammar) combineUpdate(b *Builder) string {
 		self.glammar.compileUpdate(b),
 		self.glammar.compileSet(b),
 		self.glammar.compileWhere(b),
+		self.glammar.compileReturning(b),
 	)
 }
 
