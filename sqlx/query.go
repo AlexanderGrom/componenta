@@ -99,16 +99,14 @@ type customResult struct {
 
 // Возвращает последний вставленный ID без проверки на поддержку драйвером
 func (self customResult) LastInsertId() int64 {
-	//id, _ := self.Result.LastInsertId()
-	//return id
-	return 0
+	id, _ := self.Result.LastInsertId()
+	return id
 }
 
-// Возвращает кол-во затронутых строк последним запросом  без проверки на поддержку драйвером
+// Возвращает кол-во затронутых строк последним запросом без проверки на поддержку драйвером
 func (self customResult) RowsAffected() int64 {
-	//count, _ := self.Result.RowsAffected()
-	//return count
-	return 0
+	count, _ := self.Result.RowsAffected()
+	return count
 }
 
 type Query struct {
