@@ -2,6 +2,7 @@ package sqlx
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"unicode"
 )
@@ -141,4 +142,28 @@ func toCamel(str string) string {
 	}
 
 	return string(out)
+}
+
+// Глубокий поиск полей в структуре
+func deepStructFields(x interface{}) map[string]reflect.Value {
+	fields := make(map[string]reflect.Value)
+	prt := reflect.ValueOf(x)
+	val := reflect.Indirect(prt)
+	typ := val.Type()
+	for i := 0; i < typ.NumField(); i++ {
+		ft := typ.Field(i)
+		if len(ft.PkgPath) > 0 {
+			continue
+		}
+		if ft.Anonymous && ft.Type.Kind() == reflect.Struct {
+			for k, v := range deepStructFields(val.Field(i).Addr().Interface()) {
+				if _, ok := fields[k]; !ok {
+					fields[k] = v
+				}
+			}
+		} else {
+			fields[ft.Name] = val.Field(i)
+		}
+	}
+	return fields
 }

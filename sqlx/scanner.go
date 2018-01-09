@@ -53,9 +53,12 @@ func (self *Scanner) scanSlice(a interface{}) error {
 	}
 
 	columns, err := self.rows.Columns()
-
 	if err != nil {
 		return fmt.Errorf("sqlx: %s", err)
+	}
+
+	for k, v := range columns {
+		columns[k] = toCamel(v)
 	}
 
 	sliceElem := sliceValue.Type().Elem()
@@ -66,29 +69,11 @@ func (self *Scanner) scanSlice(a interface{}) error {
 		return errors.New("sqlx: invalid variable type, must be a slice struct")
 	}
 
-	structType := structValue.Type()
-
-	count := structType.NumField()
-	fieldsMap := make(map[int]string)
-
-	for i := 0; i < count; i++ {
-		f := structType.Field(i)
-		if f.Anonymous || f.PkgPath != "" {
-			continue
-		}
-		fieldsMap[i] = toSnake(f.Name)
-	}
-
 	for self.rows.Next() {
 		structValuePrt := reflect.New(sliceElem)
 		structValue := reflect.Indirect(structValuePrt)
 
-		fields := make(map[string]reflect.Value)
-
-		for k, v := range fieldsMap {
-			fields[v] = structValue.Field(k)
-		}
-
+		fields := deepStructFields(structValuePrt.Interface())
 		values := make([]interface{}, len(columns))
 
 		for i, column := range columns {
@@ -147,22 +132,15 @@ func (self *Scanner) scanStruct(a interface{}) error {
 	}
 
 	columns, err := self.rows.Columns()
-
 	if err != nil {
 		return fmt.Errorf("sqlx: %s", err)
 	}
 
-	count := structType.NumField()
-	fields := make(map[string]reflect.Value)
-
-	for i := 0; i < count; i++ {
-		f := structType.Field(i)
-		if f.Anonymous || f.PkgPath != "" {
-			continue
-		}
-		fields[toSnake(f.Name)] = structValue.Field(i)
+	for k, v := range columns {
+		columns[k] = toCamel(v)
 	}
 
+	fields := deepStructFields(structValuePrt.Interface())
 	values := make([]interface{}, len(columns))
 
 	for i, column := range columns {

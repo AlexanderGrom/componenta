@@ -51,9 +51,12 @@ func (self *Chunker) Chunk(n int, f ChunkFunk) error {
 	}
 
 	columns, err := self.rows.Columns()
-
 	if err != nil {
 		return fmt.Errorf("sqlx: %s", err)
+	}
+
+	for k, v := range columns {
+		columns[k] = toCamel(v)
 	}
 
 	sliceValuePrt := reflect.New(sliceType)
@@ -67,19 +70,6 @@ func (self *Chunker) Chunk(n int, f ChunkFunk) error {
 		return errors.New("sqlx: two parameter must be func([]Struct)")
 	}
 
-	structType := structValue.Type()
-
-	count := structType.NumField()
-	fieldsMap := make(map[int]string)
-
-	for i := 0; i < count; i++ {
-		f := structType.Field(i)
-		if f.Anonymous || f.PkgPath != "" {
-			continue
-		}
-		fieldsMap[i] = toSnake(f.Name)
-	}
-
 	var found bool = false
 	var interrupt bool = false
 	var i int = 1
@@ -87,12 +77,7 @@ func (self *Chunker) Chunk(n int, f ChunkFunk) error {
 		structValuePrt := reflect.New(sliceElem)
 		structValue := reflect.Indirect(structValuePrt)
 
-		fields := make(map[string]reflect.Value)
-
-		for k, v := range fieldsMap {
-			fields[v] = structValue.Field(k)
-		}
-
+		fields := deepStructFields(structValuePrt.Interface())
 		values := make([]interface{}, len(columns))
 
 		for i, column := range columns {
