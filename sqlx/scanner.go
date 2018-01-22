@@ -7,7 +7,7 @@ import (
 	"reflect"
 )
 
-var ErrNoRows = errors.New("sqlx: no rows in result set")
+var ErrNoRows = sql.ErrNoRows
 
 type Scanner struct {
 	rows *sql.Rows
