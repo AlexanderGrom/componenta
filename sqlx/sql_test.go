@@ -141,6 +141,14 @@ func TestSqlWhereBase3(t *testing.T) {
 	}
 }
 
+func TestSqlWhereBase4(t *testing.T) {
+	expect := `SELECT "timestamp"::date FROM "users" WHERE "timestamp"::date = $1`
+	result := Table("users").Where("timestamp::date", "=", "2018-02-10").Select("timestamp::date").Sql()
+	if result != expect {
+		t.Errorf("Expect result to equal in func TestSqlWhereBase4.\nResult: %s\nExpect: %s", result, expect)
+	}
+}
+
 func TestSqlWhereGroup(t *testing.T) {
 	expect := `SELECT * FROM "users" WHERE "id" = $1 OR ( "id" = $2 OR "id" = $3 )`
 	result := Table("users").Where("id", "=", 1).OrWhereGroup(func(builder *Builder) {

@@ -22,6 +22,27 @@ func newPgsqlGlammar() glammar {
 	return g
 }
 
+// Обертка строки обратными кавычками
+func (self *pgsqlGlammar) wrapp(value string) string {
+	valtypes := strings.Split(value, "::")
+	segments := strings.Split(valtypes[0], ".")
+	wrapped := make([]string, len(segments))
+
+	for k, v := range segments {
+		if v == "*" {
+			wrapped[k] = v
+		} else {
+			wrapped[k] = self.wrapQuote(v)
+		}
+	}
+
+	if len(valtypes) > 1 {
+		return strings.Join(wrapped, ".") + "::" + valtypes[1]
+	}
+
+	return strings.Join(wrapped, ".")
+}
+
 func (self *pgsqlGlammar) wrapQuote(v string) string {
 	return `"` + v + `"`
 }
