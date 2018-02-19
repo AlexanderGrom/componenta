@@ -16,11 +16,7 @@ func TestCheck(t *testing.T) {
 
 	mux := r.Handler()
 
-	req, err := http.NewRequest("GET", "/test/check", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	req := httptest.NewRequest("GET", "/test/check", nil)
 	res := httptest.NewRecorder()
 
 	mux.ServeHTTP(res, req)
@@ -32,6 +28,30 @@ func TestCheck(t *testing.T) {
 	expected := `check`
 	if res.Body.String() != expected {
 		t.Errorf("handler returned unexpected body: got %v want %v", res.Body.String(), expected)
+	}
+}
+
+func TestHead(t *testing.T) {
+	p := false
+	r := New()
+	r.Head("/head", func(ctx *Ctx) int {
+		p = true
+		return 200
+	})
+
+	mux := r.Handler()
+
+	req := httptest.NewRequest("HEAD", "/head", nil)
+	res := httptest.NewRecorder()
+
+	mux.ServeHTTP(res, req)
+
+	if status := res.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	if !p {
+		t.Errorf("handler don't work")
 	}
 }
 
@@ -49,11 +69,7 @@ func TestContext(t *testing.T) {
 
 	mux := r.Handler()
 
-	req, err := http.NewRequest("GET", "/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	req := httptest.NewRequest("GET", "/", nil)
 	res := httptest.NewRecorder()
 
 	ctx := context.Background()
@@ -102,11 +118,7 @@ func TestMiddleware(t *testing.T) {
 
 	mux := r.Handler()
 
-	req, err := http.NewRequest("GET", "/news", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	req := httptest.NewRequest("GET", "/news", nil)
 	res := httptest.NewRecorder()
 
 	mux.ServeHTTP(res, req)
@@ -133,11 +145,7 @@ func TestGroup(t *testing.T) {
 
 	mux := r.Handler()
 
-	req, err := http.NewRequest("GET", "/group/path", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	req := httptest.NewRequest("GET", "/group/path", nil)
 	res := httptest.NewRecorder()
 
 	mux.ServeHTTP(res, req)
@@ -162,11 +170,7 @@ func TestCookies(t *testing.T) {
 
 	mux := r.Handler()
 
-	req, err := http.NewRequest("GET", "/path", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	req := httptest.NewRequest("GET", "/path", nil)
 	res := httptest.NewRecorder()
 
 	mux.ServeHTTP(res, req)

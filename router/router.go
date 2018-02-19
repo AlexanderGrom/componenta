@@ -8,8 +8,9 @@ import (
 
 const (
 	GET    = "GET"
-	POST   = "POST"
 	PUT    = "PUT"
+	HEAD   = "HEAD"
+	POST   = "POST"
 	DELETE = "DELETE"
 )
 
@@ -56,8 +57,9 @@ type Routes map[string][]*Route
 func NewRoutes() Routes {
 	return Routes{
 		GET:    []*Route{},
-		POST:   []*Route{},
 		PUT:    []*Route{},
+		HEAD:   []*Route{},
+		POST:   []*Route{},
 		DELETE: []*Route{},
 	}
 }
@@ -136,6 +138,10 @@ func (self *Grouper) Get(pattern string, fn Handler) *Route {
 
 func (self *Grouper) Post(pattern string, fn Handler) *Route {
 	return self.registr(POST, pattern, fn)
+}
+
+func (self *Grouper) Head(pattern string, fn Handler) *Route {
+	return self.registr(HEAD, pattern, fn)
 }
 
 func (self *Grouper) Put(pattern string, fn Handler) *Route {
