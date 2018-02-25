@@ -8,18 +8,15 @@ import (
 
 // Обертка над http.ResponseWriter
 type Response struct {
-	Writer   http.ResponseWriter
-	Request  *http.Request
-	Cookies  *CookieWriter
-	Status   int
-	data     []byte
-	redirect string
+	Writer  http.ResponseWriter
+	Request *http.Request
+	Cookies *CookieWriter
 }
 
 func NewResponse(w http.ResponseWriter, r *http.Request) *Response {
 	c := NewCookieWriter(w)
 	return &Response{
-		w, r, c, 200, []byte{}, "",
+		w, r, c,
 	}
 }
 
@@ -50,20 +47,16 @@ func (self *Response) Xml(obj interface{}) error {
 }
 
 func (self *Response) Raw(data []byte) error {
-	self.data = data
+	_, err := self.Writer.Write(data)
+	return err
+}
+
+func (self *Response) Redirect(url string, code int) error {
+	http.Redirect(self.Writer, self.Request, url, code)
 	return nil
 }
 
-func (self *Response) Redirect(url string) error {
-	self.redirect = url
+func (self *Response) Status(code int) error {
+	self.Writer.WriteHeader(code)
 	return nil
-}
-
-func (self *Response) flush() {
-	if len(self.redirect) > 0 {
-		http.Redirect(self.Writer, self.Request, self.redirect, self.Status)
-	} else {
-		self.Writer.WriteHeader(self.Status)
-		self.Writer.Write(self.data)
-	}
 }

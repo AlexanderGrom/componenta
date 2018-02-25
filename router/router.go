@@ -2,6 +2,7 @@ package router
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"regexp"
 )
@@ -20,13 +21,16 @@ var (
 
 var regexpPlaceholder = regexp.MustCompile(`:([\w]+)`)
 
-type Handler func(*Ctx) int
+type Handler func(*Ctx) error
 
-func (self Handler) apply(ctx *Ctx, fns []appliable, index int) {
-	ctx.Res.Status = self(ctx)
-	index++
-	if len(fns) > index {
-		fns[index].apply(ctx, fns, index)
+func (self Handler) apply(ctx *Ctx, fns []appliable, index int) error {
+	return self(ctx)
+}
+
+func WrapHandler(h http.Handler) Handler {
+	return func(ctx *Ctx) error {
+		h.ServeHTTP(ctx.Res.Writer, ctx.Req.Request)
+		return nil
 	}
 }
 
@@ -35,7 +39,7 @@ type Route struct {
 	Method  string
 	Pattern string
 	Handler Handler
-	FnChain func(ctx *Ctx)
+	FnChain func(ctx *Ctx) error
 	RegExp  *regexp.Regexp
 }
 
@@ -71,11 +75,11 @@ type Router struct {
 	groups []*Grouper
 }
 
-func New() *Router {
+func New(w io.Writer) *Router {
 	return &Router{
 		Interceptor: NewInterceptor(),
 		Grouper:     NewGrouper(""),
-		Mux:         NewMultiplexer(),
+		Mux:         NewMultiplexer(w),
 	}
 }
 

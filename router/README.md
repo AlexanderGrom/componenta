@@ -13,47 +13,43 @@ import (
 )
 
 func main() {  
-    r := router.New()
+    r := router.New(nil)
 
-    r.Get("/", func(ctx *router.Ctx) int {
+    r.Get("/", func(ctx *router.Ctx) error {
         ctx.Res.Cookies.Set("test", "Home Page", 100500)
         ctx.Res.Text("Hello World")
-        return 200
+        return nil
     })
 
-    r.Get("/test", func(ctx *router.Ctx) int {
+    r.Get("/test", func(ctx *router.Ctx) error {
         test := ctx.Req.Cookies.Get("test")
-        ctx.Res.Text("Cookie Value: " + test)
-        return 200
+        return ctx.Res.Text("Cookie Value: " + test)
     })
 
-    r.Get("/test/:name", func(ctx *router.Ctx) int {
-        ctx.Res.Text(ctx.Req.Params.Get("name"))
-        return 200
+    r.Get("/test/:name", func(ctx *router.Ctx) error {
+        return ctx.Res.Text(ctx.Req.Params.Get("name"))
     })
 
-    r.Get("/name", func(ctx *router.Ctx) int {
-        ctx.Res.Redirect("/test/name")
-        return 301
+    r.Get("/name", func(ctx *router.Ctx) error {
+        return ctx.Res.Redirect("/test/name", 301)
     })
 
-    r.Use(func(ctx *router.Ctx, next router.Next) {
+    r.Use(func(ctx *router.Ctx, next router.Next) error {
         log.Println("Global Middleware")
-        next()
+        return next()
     })
 
     g := r.Group("/group")
-    g.Use(func(ctx *router.Ctx, next router.Next) {
+    g.Use(func(ctx *router.Ctx, next router.Next) error {
         log.Println("Group Middleware")
-        next()
+        return next()
     })
     {
-        g.Get("/path", func(ctx *router.Ctx) int {
-            ctx.Res.Text("Address: /group/path")
-            return 200
-        }).Use(func(ctx *router.Ctx, next router.Next) {
+        g.Get("/path", func(ctx *router.Ctx) error {
+            return ctx.Res.Text("Address: /group/path")
+        }).Use(func(ctx *router.Ctx, next router.Next) error {
             log.Println("Route Middleware")
-            next()
+            return next()
         })
     }
 

@@ -1,27 +1,26 @@
 package router
 
 import (
+	"io"
 	"net/http"
 	"path"
 )
 
 type Multiplexer struct {
 	routes Routes
+	logger Logger
 }
 
-func NewMultiplexer() *Multiplexer {
+func NewMultiplexer(w io.Writer) *Multiplexer {
 	return &Multiplexer{
 		routes: NewRoutes(),
+		logger: NewLogger(w),
 	}
 }
 
 func (self *Multiplexer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := NewCtx(w, r)
-
-	defer ctx.Res.flush()
-
 	route, err := self.routing(ctx.Req)
-
 	if err != nil {
 		urlpath := ctx.Req.URL.Path
 		if urlpath[len(urlpath)-1] != '/' {
@@ -30,17 +29,19 @@ func (self *Multiplexer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				ctx.Req.URL.Path += "/"
 				_, err := self.routing(ctx.Req)
 				if err == nil {
-					ctx.Res.Status = http.StatusFound
-					ctx.Res.Redirect(ctx.Req.URL.String())
+					ctx.Res.Status(http.StatusFound)
+					ctx.Res.Redirect(ctx.Req.URL.String(), http.StatusMovedPermanently)
 					return
 				}
 			}
 		}
-		ctx.Res.Status = http.StatusNotFound
+		ctx.Res.Status(http.StatusNotFound)
 		return
 	}
 
-	route.FnChain(ctx)
+	if err := route.FnChain(ctx); err != nil {
+		self.logger.Println(err)
+	}
 }
 
 func (self *Multiplexer) routing(req *Request) (*Route, error) {

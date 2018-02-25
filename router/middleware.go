@@ -1,11 +1,11 @@
 package router
 
-type Next func()
+type Next func() error
 
 // Интерфес для Middleware и Handler
 // Эти функции будут вызываться используя метод apply
 type appliable interface {
-	apply(ctx *Ctx, fns []appliable, current int)
+	apply(ctx *Ctx, fns []appliable, current int) error
 }
 
 type Interceptor struct {
@@ -26,9 +26,9 @@ func (self *Interceptor) Use(fns ...Middleware) *Interceptor {
 	return self
 }
 
-func compose(fns []appliable) func(*Ctx) {
-	return func(ctx *Ctx) {
-		fns[0].apply(ctx, fns, 0)
+func compose(fns []appliable) func(*Ctx) error {
+	return func(ctx *Ctx) error {
+		return fns[0].apply(ctx, fns, 0)
 	}
 }
 
@@ -40,13 +40,13 @@ func merge(appliabels ...[]appliable) []appliable {
 	return all
 }
 
-type Middleware func(*Ctx, Next)
+type Middleware func(*Ctx, Next) error
 
-func (self Middleware) apply(ctx *Ctx, fns []appliable, index int) {
-	self(ctx, func() {
-		index++
-		if len(fns) > index {
-			fns[index].apply(ctx, fns, index)
+func (self Middleware) apply(ctx *Ctx, fns []appliable, index int) error {
+	return self(ctx, func() error {
+		if index++; len(fns) > index {
+			return fns[index].apply(ctx, fns, index)
 		}
+		return nil
 	})
 }
